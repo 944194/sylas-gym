@@ -12,6 +12,7 @@ const bcrypt = require("bcrypt");
 const pool = require("./db");
 
 
+
 async function sendOwnerSms(message) {
   if (process.env.FAST2SMS_ENABLED !== "true") {
     console.log("SMS dry run: owner notification was not sent.");
@@ -41,23 +42,38 @@ async function sendOwnerSms(message) {
           message,
           numbers: ownerPhone,
         }),
-        signal: AbortSignal.timeout(10000),
       }
     );
 
-    const result = await response.json().catch(() => ({}));
+    const responseText = await response.text();
+    let result;
 
-    if (!response.ok || result.return !== true) {
-      // Avoid logging API keys, phone numbers, or full provider responses.
-      console.error("Fast2SMS did not accept the notification.");
+    try {
+      result = responseText ? JSON.parse(responseText) : {};
+    } catch {
+      result = {
+        message: "Provider returned a non-JSON response.",
+      };
+    }
+
+    if (!response.ok || result.return === false) {
+      console.error("Fast2SMS rejected notification:", {
+        httpStatus: response.status,
+        providerStatusCode: result.status_code ?? null,
+        message: result.message ?? "No error message supplied.",
+      });
       return;
     }
 
-    console.log("Fast2SMS accepted the owner notification.");
+    console.log("Fast2SMS accepted notification:", {
+      requestId: result.request_id ?? null,
+      message: result.message ?? "Provider accepted the request.",
+    });
   } catch (error) {
     console.error("Fast2SMS request failed:", error.message);
   }
 }
+
 
 
 const app = express();
