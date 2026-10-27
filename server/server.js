@@ -121,11 +121,11 @@ const sessionConfig = {
   resave: false,
   saveUninitialized: false,
   cookie: {
-    httpOnly: true,
-    secure: isProduction,
-    sameSite: "lax",
-    maxAge: 1000 * 60 * 60 * 4,
-  },
+  httpOnly: true,
+  secure: isProduction,
+  sameSite: isProduction ? "none" : "lax",
+  maxAge: 1000 * 60 * 60 * 4,
+},
 };
 
 // Set this only when your deployment uses a trusted reverse proxy.
