@@ -3,6 +3,9 @@ require("dotenv").config();
 
 const crypto = require("crypto");
 const express = require("express");
+const app = express();
+
+app.set("trust proxy", 1);
 const cors = require("cors");
 const helmet = require("helmet");
 const session = require("express-session");
@@ -76,7 +79,7 @@ async function sendOwnerSms(message) {
 
 
 
-const app = express();
+
 const PORT = process.env.PORT || 5000;
 const isProduction = process.env.NODE_ENV === "production";
 
