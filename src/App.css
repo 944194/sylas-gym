@@ -1,12 +1,68 @@
-
 #root {
   min-height: 100vh;
 }
 
+:root {
+  color-scheme: dark;
+  --gym-bg: #090909;
+  --gym-panel: #141414;
+  --gym-panel-raised: #1d1d1d;
+  --gym-text: #f7f7f7;
+  --gym-muted: #aaa;
+  --gym-accent: #f04438;
+  --gym-line: rgb(255 255 255 / 12%);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 84px;
+}
+
+body {
+  margin: 0;
+  background: var(--gym-bg);
+  color: var(--gym-text);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+body:has(.photo-lightbox) {
+  overflow: hidden;
+}
+
+button,
+input,
+select {
+  font: inherit;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+button {
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
 .site-shell {
-  background: #090909;
-  color: #f7f7f7;
+  width: 100%;
+  min-height: 100vh;
   overflow: clip;
+  background: var(--gym-bg);
 }
 
 .navbar {
@@ -14,17 +70,20 @@
   z-index: 20;
   top: 0;
   left: 0;
+  display: flex;
   width: 100%;
   min-height: 88px;
-  display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 24px;
   padding: 0 7%;
-  border-bottom: 1px solid rgb(255 255 255 / 12%);
+  border-bottom: 1px solid var(--gym-line);
+  background: linear-gradient(180deg, rgb(0 0 0 / 30%), transparent);
 }
 
 .brand {
   display: inline-flex;
+  flex-shrink: 0;
   align-items: center;
   gap: 10px;
   font-size: 19px;
@@ -35,30 +94,12 @@
 .brand-logo {
   width: 58px;
   height: 42px;
-  object-fit: contain;
   flex-shrink: 0;
+  object-fit: contain;
 }
 
 .brand-name {
   display: inline-block;
-}
-
-.footer-brand .brand-logo {
-  width: 42px;
-  height: 32px;
-}
-
-.brand-mark {
-  color: #f04438;
-  display: flex;
-}
-
-.brand-accent,
-.hero-title span,
-.intro-section h2 span,
-.training-section h2 span,
-.contact-section h2 span {
-  color: #f04438;
 }
 
 .brand small {
@@ -69,10 +110,19 @@
   letter-spacing: 2px;
 }
 
+.brand-accent,
+.hero-title span,
+.intro-section h2 span,
+.training-section h2 span,
+.gallery-section h2 span,
+.contact-section h2 span {
+  color: var(--gym-accent);
+}
+
 .nav-links {
   display: flex;
   align-items: center;
-  gap: 34px;
+  gap: clamp(14px, 2vw, 30px);
 }
 
 .nav-links a,
@@ -80,18 +130,18 @@
 .hero-bottom,
 .hero-side-label {
   font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
+  font-weight: 800;
+  letter-spacing: 1.4px;
 }
 
 .nav-links a {
   color: #d2d2d2;
-  transition: color 0.2s;
+  transition: color 0.2s ease;
 }
 
 .nav-links a:hover,
 .footer a:hover {
-  color: #f04438;
+  color: var(--gym-accent);
 }
 
 .nav-cta,
@@ -100,19 +150,33 @@
   align-items: center;
   justify-content: center;
   gap: 13px;
-  background: #f04438;
+  border: 1px solid transparent;
+  background: var(--gym-accent);
   color: white;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 850;
   letter-spacing: 1.2px;
   padding: 16px 20px;
-  transition: background 0.25s, transform 0.25s;
+  transition: background 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
+  cursor: pointer;
 }
 
 .nav-cta:hover,
 .button-primary:hover {
-  background: #cf2e25;
   transform: translateY(-2px);
+  background: #cf2e25;
+}
+
+.button-primary:focus-visible,
+.button-secondary:focus-visible,
+.nav-cta:focus-visible,
+.nav-links a:focus-visible,
+.gallery-card:focus-visible,
+.marquee-photo:focus-visible,
+.menu-toggle:focus-visible,
+.lightbox-close:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 4px;
 }
 
 .menu-toggle,
@@ -122,11 +186,11 @@
 
 /* Hero */
 .hero {
+  position: relative;
+  display: flex;
   min-height: 720px;
   height: 100svh;
   max-height: 1000px;
-  position: relative;
-  display: flex;
   align-items: center;
   padding: 120px 10% 100px;
   isolation: isolate;
@@ -137,17 +201,13 @@
   z-index: -2;
   inset: 0;
   background-image:
-    linear-gradient(
-      90deg,
-      #090909 0%,
-      rgb(9 9 9 / 95%) 25%,
-      rgb(9 9 9 / 65%) 52%,
-      rgb(9 9 9 / 15%) 100%
-    ),
+    linear-gradient(90deg, #090909 0%, rgb(9 9 9 / 95%) 25%, rgb(9 9 9 / 65%) 52%, rgb(9 9 9 / 15%) 100%),
     linear-gradient(0deg, #090909 0%, transparent 25%),
     url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=2000&q=85");
   background-position: center;
   background-size: cover;
+  transform-origin: center;
+  will-change: transform;
 }
 
 .hero-content {
@@ -161,21 +221,21 @@
   gap: 10px;
   color: #ddd;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: 800;
   letter-spacing: 2px;
 }
 
 .hero-tag span {
   width: 24px;
   height: 2px;
-  background: #f04438;
+  background: var(--gym-accent);
 }
 
 .hero-title {
   margin: 26px 0;
   font-size: clamp(48px, 7.5vw, 100px);
-  line-height: 0.98;
   font-weight: 950;
+  line-height: 0.98;
   letter-spacing: -4px;
 }
 
@@ -206,19 +266,22 @@
   border: 1px solid rgb(255 255 255 / 25%);
   padding: 16px 20px;
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 850;
   letter-spacing: 1px;
+  transition: border-color 0.25s ease, background 0.25s ease, transform 0.25s ease;
 }
 
 .button-secondary:hover {
-  border-color: #f04438;
+  transform: translateY(-2px);
+  border-color: var(--gym-accent);
+  background: rgb(240 68 56 / 8%);
 }
 
 .hero-bottom {
   position: absolute;
+  right: 7%;
   bottom: 30px;
   left: 7%;
-  right: 7%;
   display: flex;
   justify-content: space-between;
   gap: 12px;
@@ -226,50 +289,63 @@
   font-size: 9px;
 }
 
+.hero-bottom a {
+  transition: color 0.2s ease;
+}
+
+.hero-bottom a:hover {
+  color: var(--gym-accent);
+}
+
 .hero-side-label {
   position: absolute;
-  right: 24px;
   top: 44%;
-  writing-mode: vertical-rl;
+  right: 24px;
   color: #aaa;
   font-size: 8px;
+  writing-mode: vertical-rl;
 }
 
-/* About section */
-.intro-section {
-  padding: 110px 10%;
-  background: #101010;
-}
-
+/* Shared section styling */
 .section-kicker {
-  color: #f04438;
+  color: var(--gym-accent);
+}
+
+.intro-section,
+.training-section,
+.gallery-section,
+.contact-section {
+  padding: 100px 10%;
+}
+
+.intro-section {
+  background: #101010;
 }
 
 .intro-section h2,
 .training-section h2,
+.gallery-section h2,
 .contact-section h2 {
+  margin: 26px 0;
   font-size: clamp(36px, 6vw, 76px);
   line-height: 1.04;
   letter-spacing: -2px;
-  margin: 26px 0;
 }
 
-.intro-copy,
-.contact-section > p:not(.section-kicker) {
+.intro-copy {
+  max-width: 520px;
   color: #aaa;
   font-size: 14px;
   line-height: 1.9;
-  max-width: 520px;
 }
 
-/* Training section */
+/* Training */
 .training-section {
-  display: block;
-  padding: 90px 10%;
   background: #090909;
 }
 
-.training-heading {
+.training-heading,
+.gallery-heading {
   display: flex;
   align-items: flex-end;
   justify-content: space-between;
@@ -277,8 +353,9 @@
   margin-bottom: 40px;
 }
 
-.training-intro {
-  max-width: 320px;
+.training-intro,
+.gallery-intro {
+  max-width: 340px;
   color: #aaa;
   font-size: 14px;
   line-height: 1.8;
@@ -286,9 +363,9 @@
 
 .training-grid {
   display: grid;
+  width: 100%;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 18px;
-  width: 100%;
 }
 
 .training-card {
@@ -301,30 +378,26 @@
 }
 
 .training-card::after {
-  content: "";
   position: absolute;
-  inset: 0;
   z-index: -1;
-  background: linear-gradient(
-    0deg,
-    rgb(0 0 0 / 95%) 0%,
-    rgb(0 0 0 / 15%) 70%
-  );
+  inset: 0;
+  background: linear-gradient(0deg, rgb(0 0 0 / 95%) 0%, rgb(0 0 0 / 15%) 70%);
+  content: "";
   pointer-events: none;
 }
 
 .training-card img {
   position: absolute;
-  inset: 0;
   z-index: -2;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s ease;
+  transition: transform 0.65s cubic-bezier(0.2, 0.7, 0.2, 1);
 }
 
 .training-card:hover img {
-  transform: scale(1.06);
+  transform: scale(1.07);
 }
 
 .training-card-content {
@@ -335,9 +408,9 @@
 }
 
 .training-card-content > span {
-  color: #f04438;
+  color: var(--gym-accent);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 850;
   letter-spacing: 1.5px;
 }
 
@@ -358,258 +431,204 @@
   margin-top: 30px;
 }
 
-/* Contact section */
-.contact-section {
-  padding: 110px 10%;
-  background: #151515;
+/* Photo gallery */
+.gallery-section {
+  overflow: hidden;
+  background: #111;
 }
 
-.contact-section .button-primary {
-  margin-top: 20px;
+.gallery-heading {
+  margin-bottom: 32px;
 }
 
-/* Footer */
-.footer {
-  padding: 28px 7%;
+.gallery-marquee {
+  width: calc(100% + 20%);
+  margin: 0 -10% 26px;
+  overflow: hidden;
+  mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+}
+
+.gallery-marquee-track {
+  display: flex;
+  width: max-content;
+  gap: 14px;
+  animation: gallery-drift 42s linear infinite;
+}
+
+.gallery-marquee:hover .gallery-marquee-track,
+.gallery-marquee:focus-within .gallery-marquee-track {
+  animation-play-state: paused;
+}
+
+.marquee-photo {
+  position: relative;
+  width: clamp(220px, 27vw, 360px);
+  height: 170px;
+  flex: 0 0 auto;
+  overflow: hidden;
+  padding: 0;
+  border: 0;
+  background: #222;
+  text-align: left;
+  cursor: pointer;
+}
+
+.marquee-photo::after {
+  position: absolute;
+  inset: 35% 0 0;
+  background: linear-gradient(transparent, rgb(0 0 0 / 85%));
+  content: "";
+}
+
+.marquee-photo img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.55s ease;
+}
+
+.marquee-photo:hover img {
+  transform: scale(1.06);
+}
+
+.marquee-photo > span {
+  position: absolute;
+  z-index: 1;
+  bottom: 16px;
+  left: 16px;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 1.4px;
+}
+
+.gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.gallery-card {
+  position: relative;
+  display: block;
+  min-width: 0;
+  aspect-ratio: 1.35 / 1;
+  overflow: hidden;
+  padding: 0;
+  border: 1px solid rgb(255 255 255 / 8%);
+  background: #202020;
+  cursor: pointer;
+  text-align: left;
+}
+
+.gallery-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.2, 0.7, 0.2, 1), filter 0.4s ease;
+}
+
+.gallery-card:hover img {
+  transform: scale(1.07);
+  filter: brightness(0.75);
+}
+
+.gallery-card-overlay {
+  position: absolute;
+  inset: auto 0 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 20px;
-  border-top: 1px solid #292929;
-  color: #aaa;
-  font-size: 9px;
-  letter-spacing: 1px;
-}
-
-.footer .brand {
+  gap: 12px;
+  padding: 34px 16px 15px;
+  background: linear-gradient(transparent, rgb(0 0 0 / 88%));
   color: white;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 1.1px;
 }
 
-/* Large desktop */
-@media (min-width: 1500px) {
-  .hero {
-    padding-left: max(10%, calc((100% - 1250px) / 2));
-  }
+.gallery-card-overlay svg {
+  flex-shrink: 0;
+  color: var(--gym-accent);
 }
 
-/* Tablet */
-@media (max-width: 900px) {
-  .navbar {
-    padding: 0 5%;
-  }
-
-  .nav-links {
-    gap: 18px;
-  }
-
-  .nav-cta {
-    padding: 13px;
-  }
-
-  .hero {
-    padding-left: 7%;
-    padding-right: 7%;
-  }
-
-  .hero-side-label {
-    display: none;
-  }
-
-  .training-section,
-  .intro-section,
-  .contact-section {
-    padding-left: 7%;
-    padding-right: 7%;
-  }
-
-  .training-grid {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .training-card:last-child {
-    grid-column: 1 / -1;
-    min-height: 280px;
-  }
+.gallery-note {
+  margin: 18px 0 0;
+  color: #777;
+  font-size: 11px;
+  line-height: 1.6;
 }
 
-/* Mobile */
-@media (max-width: 640px) {
-  .navbar {
-    min-height: 72px;
-    padding: 0 5%;
-  }
-
-  .brand {
-    font-size: 17px;
-  }
-
-  .brand-logo {
-    width: 46px;
-    height: 36px;
-  }
-
-  .nav-cta {
-    display: none;
-  }
-
-  .menu-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid #444;
-    background: transparent;
-    color: white;
-    width: 42px;
-    height: 42px;
-  }
-
-  .nav-links {
-    display: none;
-    position: absolute;
-    top: 71px;
-    left: 0;
-    right: 0;
-    padding: 24px 6%;
-    background: #101010;
-    border-bottom: 1px solid #333;
-    align-items: stretch;
-    flex-direction: column;
-    gap: 24px;
-  }
-
-  .nav-links.nav-links-open {
-    display: flex;
-  }
-
-  .nav-links a {
-    font-size: 12px;
-  }
-
-  .mobile-join {
-    display: block;
-    color: #f04438 !important;
-  }
-
-  .hero {
-    height: auto;
-    min-height: 690px;
-    max-height: none;
-    padding: 130px 6% 95px;
-  }
-
-  .hero-image {
-    background-image:
-      linear-gradient(
-        90deg,
-        rgb(9 9 9 / 92%),
-        rgb(9 9 9 / 55%)
-      ),
-      linear-gradient(0deg, #090909 0%, transparent 40%),
-      url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=75");
-    background-position: center;
-    background-size: cover;
-  }
-
-  .hero-title {
-    font-size: clamp(43px, 12vw, 70px);
-    letter-spacing: -2px;
-    margin: 22px 0;
-  }
-
-  .hero-description {
-    max-width: 360px;
-    font-size: 13px;
-  }
-
-  .hero-actions {
-    flex-direction: column;
-    align-items: stretch;
-    max-width: 330px;
-  }
-
-  .hero-bottom {
-    left: 6%;
-    right: 6%;
-    bottom: 22px;
-    font-size: 7px;
-    letter-spacing: 0.6px;
-  }
-
-  .hero-index {
-    display: none;
-  }
-
-  .intro-section,
-  .training-section,
-  .contact-section {
-    padding: 60px 6%;
-  }
-
-  .intro-section h2,
-  .training-section h2,
-  .contact-section h2 {
-    font-size: clamp(34px, 9vw, 52px);
-    letter-spacing: -1.5px;
-  }
-
-  .training-heading {
-    display: block;
-    margin-bottom: 24px;
-  }
-
-  .training-intro {
-    margin-top: 18px;
-  }
-
-  .training-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
-  }
-
-  .training-card,
-  .training-card:last-child {
-    grid-column: auto;
-    min-height: 220px;
-  }
-
-  .training-card-content {
-    padding: 18px;
-  }
-
-  .training-cta {
-    width: 100%;
-    font-size: 9px;
-    padding: 15px 12px;
-  }
-
-  .footer {
-    padding: 25px 6%;
-    flex-wrap: wrap;
-    font-size: 8px;
-  }
+@keyframes gallery-drift {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
 }
 
-/* Accessibility */
-@media (prefers-reduced-motion: reduce) {
-  *,
-  *::before,
-  *::after {
-    scroll-behavior: auto !important;
-    transition-duration: 0.01ms !important;
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-  }
+/* Photo lightbox */
+.photo-lightbox {
+  position: fixed;
+  z-index: 100;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 28px;
+  background: rgb(0 0 0 / 92%);
+  backdrop-filter: blur(12px);
+  animation: lightbox-appear 0.18s ease-out;
 }
 
+.lightbox-content {
+  width: min(100%, 1000px);
+  max-height: 90vh;
+}
 
+.lightbox-content img {
+  width: 100%;
+  max-height: 78vh;
+  object-fit: contain;
+}
 
+.lightbox-content p {
+  margin: 14px 0 0;
+  color: #eee;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 1.5px;
+}
+
+.lightbox-close {
+  position: absolute;
+  top: 18px;
+  right: 20px;
+  display: grid;
+  width: 46px;
+  height: 46px;
+  place-items: center;
+  border: 1px solid #555;
+  background: #171717;
+  cursor: pointer;
+}
+
+.lightbox-close:hover {
+  border-color: var(--gym-accent);
+  color: var(--gym-accent);
+}
+
+@keyframes lightbox-appear {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
 
 /* Contact and membership enquiry */
+.contact-section {
+  background: #151515;
+}
+
 .contact-layout {
   display: grid;
   grid-template-columns: minmax(0, 1.1fr) minmax(300px, 0.8fr);
-  gap: 64px;
   align-items: start;
+  gap: 64px;
 }
 
 .contact-description {
@@ -626,14 +645,14 @@
 }
 
 .contact-detail {
-  border-top: 1px solid #333;
   padding-top: 15px;
+  border-top: 1px solid #333;
 }
 
 .contact-detail span {
-  color: #f04438;
+  color: var(--gym-accent);
   font-size: 10px;
-  font-weight: 800;
+  font-weight: 850;
   letter-spacing: 1.5px;
 }
 
@@ -655,8 +674,8 @@
   flex-direction: column;
   gap: 12px;
   padding: 30px;
-  background: #202020;
   border: 1px solid #333;
+  background: #202020;
 }
 
 .membership-form .section-kicker {
@@ -673,7 +692,7 @@
   margin-top: 8px;
   color: #ddd;
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 650;
 }
 
 .membership-form input,
@@ -692,7 +711,8 @@
 
 .membership-form input:focus,
 .membership-form select:focus {
-  border-color: #f04438;
+  border-color: var(--gym-accent);
+  box-shadow: 0 0 0 2px rgb(240 68 56 / 14%);
 }
 
 .membership-form input::placeholder {
@@ -702,7 +722,13 @@
 .form-submit {
   width: 100%;
   margin-top: 14px;
-  border: none;
+  border: 0;
+}
+
+.form-submit:disabled {
+  cursor: wait;
+  opacity: 0.7;
+  transform: none;
 }
 
 .form-note {
@@ -711,32 +737,696 @@
   line-height: 1.7;
 }
 
-@media (max-width: 900px) {
+/* Footer */
+.footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 28px 7%;
+  border-top: 1px solid #292929;
+  color: #aaa;
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+
+.footer .brand {
+  color: white;
+}
+
+.footer-brand .brand-logo {
+  width: 42px;
+  height: 32px;
+}
+
+/* Large desktop */
+@media (min-width: 1500px) {
+  .hero {
+    padding-left: max(10%, calc((100% - 1250px) / 2));
+  }
+}
+
+/* Tablet and compact laptop */
+@media (max-width: 1000px) {
+  .navbar {
+    padding-right: 5%;
+    padding-left: 5%;
+  }
+
+  .nav-links {
+    gap: 14px;
+  }
+
+  .nav-links a,
+  .nav-cta {
+    font-size: 9px;
+    letter-spacing: 0.8px;
+  }
+
+  .nav-cta {
+    padding: 13px;
+  }
+
+  .hero {
+    padding-right: 7%;
+    padding-left: 7%;
+  }
+
+  .hero-side-label {
+    display: none;
+  }
+
+  .training-section,
+  .intro-section,
+  .gallery-section,
+  .contact-section {
+    padding-right: 7%;
+    padding-left: 7%;
+  }
+
+  .training-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .training-card:last-child {
+    grid-column: 1 / -1;
+    min-height: 280px;
+  }
+
+  .gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .contact-layout {
     grid-template-columns: 1fr;
     gap: 36px;
   }
 
   .membership-form {
-    max-width: 600px;
+    max-width: 650px;
   }
 }
 
-@media (max-width: 640px) {
+/* Mobile */
+@media (max-width: 700px) {
+  html {
+    scroll-padding-top: 72px;
+  }
+
+  .navbar {
+    min-height: 72px;
+    padding: 0 5%;
+  }
+
+  .brand {
+    gap: 8px;
+    font-size: 17px;
+  }
+
+  .brand-logo {
+    width: 46px;
+    height: 36px;
+  }
+
+  .brand small {
+    font-size: 7px;
+    letter-spacing: 1.5px;
+  }
+
+  .nav-cta {
+    display: none;
+  }
+
+  .menu-toggle {
+    display: flex;
+    width: 42px;
+    height: 42px;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #444;
+    background: rgb(0 0 0 / 35%);
+    color: white;
+    cursor: pointer;
+  }
+
+  .nav-links {
+    position: absolute;
+    top: 71px;
+    right: 0;
+    left: 0;
+    display: none;
+    align-items: stretch;
+    flex-direction: column;
+    gap: 0;
+    padding: 10px 6% 20px;
+    border-bottom: 1px solid #333;
+    background: #101010;
+  }
+
+  .nav-links.nav-links-open {
+    display: flex;
+  }
+
+  .nav-links a {
+    padding: 13px 0;
+    font-size: 11px;
+  }
+
+  .mobile-join {
+    display: block;
+    color: var(--gym-accent) !important;
+  }
+
+  .hero {
+    height: auto;
+    min-height: min(760px, 100svh);
+    max-height: none;
+    padding: 118px 6% 84px;
+  }
+
+  .hero-image {
+    background-image:
+      linear-gradient(90deg, rgb(9 9 9 / 91%), rgb(9 9 9 / 50%)),
+      linear-gradient(0deg, #090909 0%, transparent 45%),
+      url("https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=1000&q=75");
+    background-position: 58% center;
+  }
+
+  .hero-tag {
+    font-size: 9px;
+    letter-spacing: 1.3px;
+  }
+
+  .hero-title {
+    margin: 22px 0;
+    font-size: clamp(42px, 11vw, 68px);
+    letter-spacing: -2px;
+  }
+
+  .hero-description {
+    max-width: 360px;
+    font-size: 13px;
+    line-height: 1.75;
+  }
+
+  .hero-actions {
+    max-width: 330px;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .hero-actions a {
+    min-height: 48px;
+  }
+
+  .hero-bottom {
+    right: 6%;
+    bottom: 18px;
+    left: 6%;
+    font-size: 7px;
+    letter-spacing: 0.6px;
+  }
+
+  .hero-index,
+  .hero-side-label {
+    display: none;
+  }
+
+  .intro-section,
+  .training-section,
+  .gallery-section,
+  .contact-section {
+    padding: 58px 6%;
+  }
+
+  .intro-section h2,
+  .training-section h2,
+  .gallery-section h2,
+  .contact-section h2 {
+    margin: 20px 0;
+    font-size: clamp(33px, 8.8vw, 52px);
+    letter-spacing: -1.5px;
+  }
+
+  /* Hide supporting copy on phones; keep core headings and actions. */
+  .intro-copy,
+  .training-intro,
+  .gallery-intro,
+  .training-card p,
+  .gallery-note,
+  .form-note {
+    display: none;
+  }
+
+  .training-heading,
+  .gallery-heading {
+    display: block;
+    margin-bottom: 22px;
+  }
+
+  .training-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 10px;
+  }
+
+  .training-card,
+  .training-card:last-child {
+    grid-column: auto;
+    min-height: 230px;
+  }
+
+  .training-card:last-child {
+    grid-column: 1 / -1;
+    min-height: 190px;
+  }
+
+  .training-card-content {
+    padding: 15px;
+  }
+
+  .training-card-content > span {
+    font-size: 8px;
+  }
+
+  .training-card h3 {
+    margin: 9px 0 0;
+    font-size: 14px;
+  }
+
+  .training-cta {
+    display: flex;
+    width: 100%;
+    min-height: 48px;
+    padding: 14px 10px;
+    font-size: 9px;
+  }
+
+  .gallery-marquee {
+    width: calc(100% + 12%);
+    margin: 0 -6% 16px;
+  }
+
+  .gallery-marquee-track {
+    gap: 10px;
+    animation-duration: 52s;
+  }
+
+  .marquee-photo {
+    width: 68vw;
+    max-width: 300px;
+    height: 132px;
+  }
+
+  .marquee-photo > span {
+    bottom: 12px;
+    left: 12px;
+    font-size: 9px;
+  }
+
+  /* On small screens, a horizontal photo rail avoids a tall gallery grid. */
+  .gallery-grid {
+    display: flex;
+    gap: 10px;
+    overflow-x: auto;
+    padding: 0 0 8px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: thin;
+    scrollbar-color: #444 transparent;
+  }
+
+  .gallery-card {
+    flex: 0 0 72%;
+    aspect-ratio: 1.25 / 1;
+    scroll-snap-align: start;
+  }
+
+  .gallery-card-overlay {
+    padding: 26px 12px 12px;
+    font-size: 8px;
+    letter-spacing: 0.7px;
+  }
+
+  .gallery-card-overlay svg {
+    width: 16px;
+  }
+
+  .contact-layout {
+    gap: 24px;
+  }
+
+  .contact-description {
+    font-size: 13px;
+    line-height: 1.7;
+  }
+
+  .contact-details {
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .contact-detail {
+    padding-top: 10px;
+  }
+
+  .contact-detail p {
+    margin: 8px 0 0;
+    font-size: 13px;
+  }
+
   .contact-actions {
     flex-direction: column;
     align-items: stretch;
+    gap: 9px;
+    margin-top: 20px;
   }
 
   .contact-actions a {
     width: 100%;
+    min-height: 46px;
   }
 
   .membership-form {
-    padding: 22px 18px;
+    gap: 9px;
+    padding: 20px 16px;
   }
 
   .membership-form h3 {
-    font-size: 22px;
+    margin: 2px 0 10px;
+    font-size: 21px;
+  }
+
+  .membership-form label {
+    margin-top: 5px;
+  }
+
+  .membership-form input,
+  .membership-form select {
+    min-height: 45px;
+  }
+
+  .form-submit {
+    min-height: 48px;
+    font-size: 9px;
+  }
+
+  .footer {
+    flex-wrap: wrap;
+    padding: 22px 6%;
+    font-size: 8px;
+  }
+
+  .footer > span {
+    display: none;
+  }
+
+  .photo-lightbox {
+    padding: 14px;
+  }
+
+  .lightbox-close {
+    top: 10px;
+    right: 10px;
+    width: 42px;
+    height: 42px;
+  }
+}
+
+@media (max-width: 380px) {
+  .hero-title {
+    font-size: 40px;
+  }
+
+  .hero-bottom > span:first-child {
+    max-width: 190px;
+  }
+
+  .training-card,
+  .training-card:last-child {
+    min-height: 190px;
+  }
+
+  .training-card h3 {
+    font-size: 12px;
+  }
+}
+
+/* Respect accessibility preferences. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .gallery-marquee-track {
+    animation: none;
+  }
+}
+
+
+/* Owner story and weekly timetable: consistent dark gym-site theme */
+.owner-section,
+.timetable-section {
+  background: #090909;
+  color: #f5f5f5;
+  padding: clamp(68px, 9vw, 132px) 10%;
+}
+
+.owner-section {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.72fr);
+  align-items: center;
+  gap: clamp(36px, 7vw, 100px);
+  border-top: 1px solid #242424;
+}
+
+.owner-copy h2,
+.timetable-heading h2 {
+  margin: 18px 0 26px;
+  font-size: clamp(38px, 5.4vw, 76px);
+  line-height: 0.98;
+  letter-spacing: -2.8px;
+}
+
+.owner-copy h2 span,
+.timetable-heading h2 span {
+  color: var(--gym-accent, #ff493b);
+}
+
+.owner-copy > p:not(.section-kicker) {
+  max-width: 620px;
+  color: #aaa;
+  font-size: 16px;
+  line-height: 1.9;
+}
+
+.owner-card {
+  overflow: hidden;
+  border: 1px solid #292929;
+  background: #121212;
+  box-shadow: 0 24px 70px rgb(0 0 0 / 30%);
+}
+
+.owner-card > img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 0.98 / 1;
+  object-fit: cover;
+  object-position: center 30%;
+  filter: saturate(0.88);
+}
+
+.owner-card-info {
+  padding: 24px 26px 28px;
+}
+
+.owner-label {
+  color: var(--gym-accent, #ff493b);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 2px;
+}
+
+.owner-card-info h3 {
+  margin: 10px 0 4px;
+  color: #fff;
+  font-size: clamp(24px, 2.5vw, 34px);
+  letter-spacing: -1px;
+}
+
+.owner-card-info p {
+  margin: 0;
+  color: #aaa;
+  font-size: 14px;
+}
+
+.timetable-section {
+  border-top: 1px solid #262626;
+  padding-top: clamp(58px, 7vw, 96px);
+}
+
+.timetable-heading {
+  max-width: 850px;
+  margin: 0 auto 42px;
+  text-align: center;
+}
+
+.timetable-eyebrow {
+  margin: 16px 0 0;
+  color: #888;
+  font-size: clamp(16px, 2vw, 24px);
+}
+
+.timetable-heading h2 {
+  margin: 12px 0 16px;
+  font-size: clamp(34px, 4.5vw, 58px);
+  letter-spacing: -1.8px;
+}
+
+.timetable-description,
+.timetable-footnote {
+  color: #969696;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.timetable-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid #282828;
+  scrollbar-color: #4a4a4a #111;
+}
+
+.workout-timetable {
+  width: 100%;
+  min-width: 920px;
+  border-collapse: collapse;
+  table-layout: fixed;
+  background: #111;
+}
+
+.workout-timetable th,
+.workout-timetable td {
+  border: 1px solid #282828;
+  padding: 18px 12px;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.workout-timetable thead th,
+.workout-timetable tbody th {
+  width: 125px;
+  background: var(--gym-accent, #f53816);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.workout-timetable thead th {
+  padding: 20px 10px;
+  font-size: 14px;
+}
+
+.workout-timetable td {
+  color: #f5f5f5;
+}
+
+.workout-timetable td strong,
+.workout-timetable td small {
+  display: block;
+}
+
+.workout-timetable td strong {
+  font-size: 14px;
+  line-height: 1.35;
+}
+
+.workout-timetable td small {
+  margin-top: 6px;
+  color: #999;
+  font-size: 11px;
+  line-height: 1.45;
+}
+
+.workout-timetable td.timetable-empty {
+  color: #353535;
+  background: #141414;
+}
+
+.timetable-footnote {
+  margin: 16px 0 0;
+  text-align: center;
+  font-size: 11px;
+}
+
+@media (max-width: 760px) {
+  .owner-section,
+  .timetable-section {
+    padding: 58px 6%;
+  }
+
+  .owner-section {
+    grid-template-columns: 1fr;
+    gap: 26px;
+  }
+
+  .owner-copy h2 {
+    font-size: clamp(34px, 9vw, 52px);
+    letter-spacing: -1.5px;
+  }
+
+  .owner-copy > p:not(.section-kicker) {
+    font-size: 14px;
+    line-height: 1.75;
+  }
+
+  .owner-card {
+    max-width: 420px;
+  }
+
+  .owner-card > img {
+    aspect-ratio: 1.15 / 1;
+  }
+
+  .owner-card-info {
+    padding: 20px;
+  }
+
+  .timetable-heading {
+    margin-bottom: 26px;
+    text-align: left;
+  }
+
+  .timetable-heading h2 {
+    font-size: clamp(32px, 8vw, 46px);
+  }
+
+  .timetable-description {
+    font-size: 12px;
+  }
+
+  .workout-timetable {
+    min-width: 850px;
+  }
+}
+
+/* The gallery now uses one moving photo strip only; no second duplicate grid. */
+.gallery-grid {
+  display: none !important;
+}
+
+@media (max-width: 700px) {
+  .owner-section .section-kicker,
+  .timetable-section .section-kicker {
+    font-size: 9px;
+  }
+
+  .owner-card-info h3 {
+    font-size: 26px;
   }
 }

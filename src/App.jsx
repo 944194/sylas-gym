@@ -3,14 +3,31 @@ import { useEffect, useRef, useState } from 'react'
 import { gsap } from 'gsap'
 import { ScrollTrigger } from 'gsap/ScrollTrigger'
 import { GYM_CONFIG } from './config'
+import { ArrowDown, ArrowRight, Menu, X, Images } from 'lucide-react'
+import './App.css'
 
 gsap.registerPlugin(ScrollTrigger)
-import { ArrowDown, ArrowRight, Menu, X, Dumbbell } from 'lucide-react'
-import './App.css'
 
 function App() {
   const heroRef = useRef(null)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [activePhoto, setActivePhoto] = useState(null)
+
+  const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/$/, '')
+
+  // These are illustrative gym photos. Replace with approved Sylas Gym photos when available.
+  const galleryPhotos = [
+    { src: '/gym-gallery/gym-interior.jpg', alt: 'Main gym floor with strength machines', label: 'THE TRAINING FLOOR' },
+    { src: '/gym-gallery/cardio-treadmills.jpg', alt: 'Cardio zone with treadmills', label: 'CARDIO ZONE' },
+    { src: '/gym-gallery/cardio-equipment.jpg', alt: 'Treadmills and cardio equipment', label: 'MOVE WITH PURPOSE' },
+    { src: '/gym-gallery/dumbbell-rack.jpg', alt: 'Dumbbell rack and mirrored workout area', label: 'STRENGTH ZONE' },
+    { src: '/gym-gallery/treadmill-area.jpg', alt: 'Treadmill and machine area', label: 'CARDIO & CONDITIONING' },
+    { src: '/gym-gallery/functional-training.jpg', alt: 'Cardio and functional training equipment', label: 'TRAIN EVERY DAY' },
+    { src: '/gym-gallery/dumbbells.jpg', alt: 'Dumbbells for strength training', label: 'EVERY REP COUNTS' },
+    { src: '/gym-gallery/strength-zone.jpg', alt: 'Strength zone and plate-loaded machines', label: 'BUILT FOR PROGRESS' },
+    { src: '/gym-gallery/cardio-zone.jpg', alt: 'Cardio zone with large windows', label: 'FIND YOUR PACE' },
+    { src: '/gym-gallery/gym-wide-view.jpg', alt: 'Wide view of the Sylas Gym floor', label: 'YOUR NEXT CHAPTER' },
+];
 
   
 useEffect(() => {
@@ -56,6 +73,9 @@ useEffect(() => {
       '.intro-section',
       '.training-section',
       '.contact-section',
+      '.gallery-section',
+      '.owner-section',
+      '.timetable-section',
     ]).forEach((section) => {
       const content = section.querySelectorAll(
         '.section-kicker, h2, p, .button-primary'
@@ -115,6 +135,9 @@ useEffect(() => {
           <a className="nav-item" href="#home" onClick={closeMenu}>HOME</a>
           <a className="nav-item" href="#about" onClick={closeMenu}>ABOUT</a>
           <a className="nav-item" href="#training" onClick={closeMenu}>TRAINING</a>
+          <a className="nav-item gallery-nav-link" href="#gallery" onClick={closeMenu}>GALLERY</a>
+          <a className="nav-item" href="#owner" onClick={closeMenu}>OWNER</a>
+          <a className="nav-item" href="#timetable" onClick={closeMenu}>TIMETABLE</a>
           <a className="nav-item" href="#contact" onClick={closeMenu}>CONTACT</a>
           <a className="mobile-join" href="#contact" onClick={closeMenu}>JOIN NOW ↗</a>
         </div>
@@ -252,11 +275,72 @@ useEffect(() => {
 </section>
 
 
-      
-<section className="contact-section" id="contact">
+
+      <section className="gallery-section" id="gallery">
+        <div className="gallery-heading">
+          <div>
+            <p className="section-kicker">03 — INSIDE SYLAS</p>
+            <h2>THE SPACE.<br /><span>THE WORK.</span></h2>
+          </div>
+          <p className="gallery-intro">
+            Take a look inside Sylas Gym — from strength equipment to the cardio zone.
+          </p>
+        </div>
+
+        <div className="gallery-marquee" aria-label="Sylas Gym photo highlights">
+          <div className="gallery-marquee-track">
+            {[...galleryPhotos, ...galleryPhotos].map((photo, index) => (
+              <button
+                className="marquee-photo"
+                key={`${photo.label}-${index}`}
+                type="button"
+                onClick={() => setActivePhoto(photo)}
+                aria-label={`View photo: ${photo.label}`}
+                tabIndex={index >= galleryPhotos.length ? -1 : 0}
+              >
+                <img src={photo.src} alt={index < galleryPhotos.length ? photo.alt : ''} loading="lazy" />
+                <span>{photo.label}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <p className="gallery-note">Select any photo to view it larger.</p>
+      </section>
+
+      <section className="owner-section" id="owner">
+        <div className="owner-copy">
+          <p className="section-kicker">04 — THE PEOPLE BEHIND SYLAS</p>
+          <h2>MORE THAN A GYM.<br /><span>A COMMUNITY.</span></h2>
+          <p>
+            Established on February 10, 2020, Sylas Gym was built to be more than
+            a fitness facility — a community where people can work towards their
+            goals, stay consistent and become stronger together.
+          </p>
+          <p>
+            Every member is part of the Sylas family. Show up, put in the work,
+            and keep moving forward.
+          </p>
+        </div>
+        <article className="owner-card">
+          <img
+            src="/gym-gallery/owner-ajith-paul-syla.jpg"
+            alt="Ajith Paul Syla, proprietor of Sylas Gym"
+            loading="lazy"
+          />
+          <div className="owner-card-info">
+            <span className="owner-label">THE PROPRIETOR</span>
+            <h3>Ajith Paul Syla</h3>
+            <p>Proprietor, Sylas Gym</p>
+          </div>
+        </article>
+      </section>
+
+
+
+      <section className="contact-section" id="contact">
   <div className="contact-layout">
     <div className="contact-info">
-      <p className="section-kicker">03 — TAKE THE FIRST STEP</p>
+      <p className="section-kicker">04 — TAKE THE FIRST STEP</p>
 
       <h2>
         YOUR STRONGER
@@ -331,7 +415,7 @@ useEffect(() => {
 
     try {
       const response = await fetch(
-        "http://localhost:5000/api/enquiries",
+        `${apiUrl}/api/enquiries`,
         {
           method: "POST",
           headers: {
@@ -412,6 +496,97 @@ useEffect(() => {
 
   </div>
 </section>
+
+
+      <section className="timetable-section" id="timetable">
+        <div className="timetable-heading">
+          <p className="section-kicker">05 — PLAN YOUR SESSION</p>
+          <p className="timetable-eyebrow">OUR WEEKLY GYM SCHEDULES</p>
+          <h2>WORKOUT <span>TIMETABLE</span></h2>
+          <p className="timetable-description">A sample weekly class timetable inspired by the schedule reference you shared. Please confirm class timings with the gym before visiting.</p>
+        </div>
+
+        <div className="timetable-wrap">
+          <table className="workout-timetable">
+            <thead>
+              <tr>
+                <th scope="col">TIME</th>
+                <th scope="col">MON</th>
+                <th scope="col">TUE</th>
+                <th scope="col">WED</th>
+                <th scope="col">THU</th>
+                <th scope="col">FRI</th>
+                <th scope="col">SAT</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <th scope="row">05:30 AM</th>
+                <td><strong>Cardio</strong><small>05:30 AM – 09:00 AM</small></td>
+                <td><strong>Power Fitness</strong><small>05:30 AM – 09:00 AM</small></td>
+                <td className="timetable-empty">—</td>
+                <td><strong>Cardio</strong><small>05:30 AM – 09:00 AM</small></td>
+                <td><strong>Power Fitness</strong><small>05:30 AM – 09:00 AM</small></td>
+                <td className="timetable-empty">—</td>
+              </tr>
+              <tr>
+                <th scope="row">09:00 AM</th>
+                <td className="timetable-empty">—</td>
+                <td className="timetable-empty">—</td>
+                <td><strong>HIIT Group Class</strong><small>09:00 AM – 10:00 AM</small></td>
+                <td><strong>Aerobic</strong><small>09:00 AM – 10:00 AM</small></td>
+                <td className="timetable-empty">—</td>
+                <td><strong>HIIT Group Class</strong><small>09:00 AM – 10:00 AM</small></td>
+              </tr>
+              <tr>
+                <th scope="row">10:00 AM</th>
+                <td className="timetable-empty">—</td>
+                <td><strong>Boxing</strong><small>10:00 AM – 11:45 AM</small></td>
+                <td><strong>Aerobic</strong><small>10:00 AM – 11:45 AM</small></td>
+                <td className="timetable-empty">—</td>
+                <td><strong>Body Work</strong><small>10:00 AM – 11:45 AM</small></td>
+                <td className="timetable-empty">—</td>
+              </tr>
+              <tr>
+                <th scope="row">04:00 PM</th>
+                <td><strong>Boxing</strong><small>04:00 PM – 05:00 PM</small></td>
+                <td><strong>Power Lifting</strong><small>05:00 PM – 06:00 PM</small></td>
+                <td className="timetable-empty">—</td>
+                <td><strong>Cardio</strong><small>06:00 PM – 09:00 PM</small></td>
+                <td className="timetable-empty">—</td>
+                <td><strong>HIIT</strong><small>04:00 PM – 05:00 PM</small></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p className="timetable-footnote">Timetable details shown for website layout reference; verify the current schedule with Sylas Gym before publishing.</p>
+      </section>
+
+      {activePhoto && (
+        <div
+          className="photo-lightbox"
+          role="dialog"
+          aria-modal="true"
+          aria-label={activePhoto.label}
+          onClick={() => setActivePhoto(null)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setActivePhoto(null)
+          }}
+        >
+          <button
+            type="button"
+            className="lightbox-close"
+            aria-label="Close enlarged photo"
+            onClick={() => setActivePhoto(null)}
+          >
+            <X size={24} />
+          </button>
+          <div className="lightbox-content" onClick={(event) => event.stopPropagation()}>
+            <img src={activePhoto.src} alt={activePhoto.alt} />
+            <p>{activePhoto.label}</p>
+          </div>
+        </div>
+      )}
 
 
       <footer className="footer">
