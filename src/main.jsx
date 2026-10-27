@@ -13,7 +13,8 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<App />} />
-        <Route path="/owner" element={<OwnerLogin />} />
+        <Route path="/owner" element={<Navigate to="/owner/login" replace />} />
+        <Route path="/owner/login" element={<OwnerLogin />} />
         <Route path="/owner/dashboard" element={<OwnerDashboard />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
