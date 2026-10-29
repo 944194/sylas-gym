@@ -1430,3 +1430,165 @@ img {
     font-size: 26px;
   }
 }
+
+
+
+/* ========================================
+   OUR TRAINERS
+======================================== */
+
+.trainers-section {
+  padding: 90px 6%;
+  background: #101010;
+  color: #fff;
+}
+
+.trainers-heading {
+  max-width: 760px;
+  margin: 0 auto 42px;
+  text-align: center;
+}
+
+.trainers-heading .section-kicker {
+  color: #f04438;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: 3px;
+}
+
+.trainers-heading h2 {
+  margin: 12px 0;
+  font-size: clamp(32px, 5vw, 58px);
+  font-weight: 900;
+  letter-spacing: -1.5px;
+}
+
+.trainers-heading > p:last-child {
+  color: #aaa;
+  line-height: 1.7;
+}
+
+.trainers-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 24px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.trainer-card {
+  min-width: 0;
+  overflow: hidden;
+  border: 1px solid #292929;
+  border-radius: 14px;
+  background: #181818;
+  transition:
+    transform 250ms ease,
+    border-color 250ms ease,
+    box-shadow 250ms ease;
+}
+
+.trainer-card:hover {
+  transform: translateY(-6px);
+  border-color: #f04438;
+  box-shadow: 0 18px 40px rgb(0 0 0 / 25%);
+}
+
+.trainer-image-wrap {
+  height: 320px;
+  overflow: hidden;
+  background: #242424;
+}
+
+.trainer-image-wrap img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center 25%;
+  transition: transform 400ms ease;
+}
+
+.trainer-card:hover .trainer-image-wrap img {
+  transform: scale(1.04);
+}
+
+.trainer-card-content {
+  padding: 22px;
+}
+
+.trainer-card-content h3 {
+  margin: 0 0 8px;
+  font-size: 24px;
+  font-weight: 800;
+  overflow-wrap: anywhere;
+}
+
+.trainer-specialization {
+  margin: 0 0 12px;
+  color: #f04438;
+  font-weight: 700;
+}
+
+.trainer-experience,
+.trainer-qualifications,
+.trainer-bio {
+  color: #b8b8b8;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.trainers-message {
+  max-width: 600px;
+  margin: 30px auto;
+  color: #bbb;
+  text-align: center;
+  line-height: 1.7;
+}
+
+@media (max-width: 900px) {
+  .trainers-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .trainer-image-wrap {
+    height: 280px;
+  }
+}
+
+@media (max-width: 600px) {
+  .trainers-section {
+    padding: 60px 5%;
+  }
+
+ .trainers-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 360px));
+  justify-content: center;
+  align-items: stretch;
+  gap: 28px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+  .trainer-image-wrap {
+    height: 340px;
+  }
+
+  .trainer-card-content {
+    padding: 18px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trainer-card,
+  .trainer-image-wrap img {
+    transition: none;
+  }
+
+  .trainer-card:hover,
+  .trainer-card:hover .trainer-image-wrap img {
+    transform: none;
+  }
+}

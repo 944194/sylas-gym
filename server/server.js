@@ -13,6 +13,7 @@ const PgSession = require("connect-pg-simple")(session);
 const rateLimit = require("express-rate-limit");
 const bcrypt = require("bcrypt");
 const pool = require("./db");
+const cloudinary = require("./cloudinary");
 
 
 
@@ -284,6 +285,55 @@ app.post("/api/owner/login", loginLimiter, async (req, res, next) => {
   }
 });
 
+// Generate a secure signature for trainer photo uploads
+app.post(
+  "/api/owner/trainers/upload-signature",
+  requireOwner,
+  requireCsrf,
+  (req, res) => {
+    try {
+      if (
+        !process.env.CLOUDINARY_CLOUD_NAME ||
+        !process.env.CLOUDINARY_API_KEY ||
+        !process.env.CLOUDINARY_API_SECRET
+      ) {
+        return res.status(500).json({
+          success: false,
+          message: "Photo upload service is not configured.",
+        });
+      }
+
+      const timestamp = Math.floor(Date.now() / 1000);
+
+      const paramsToSign = {
+        timestamp,
+        folder: "sylas-gym/trainers",
+      };
+
+      const signature = cloudinary.utils.api_sign_request(
+        paramsToSign,
+        process.env.CLOUDINARY_API_SECRET
+      );
+
+      return res.json({
+        success: true,
+        signature,
+        timestamp,
+        folder: paramsToSign.folder,
+        apiKey: process.env.CLOUDINARY_API_KEY,
+        cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+      });
+    } catch (error) {
+      console.error("Trainer upload signature failed:", error.message);
+
+      return res.status(500).json({
+        success: false,
+        message: "Unable to prepare the photo upload.",
+      });
+    }
+  }
+);
+
 // Check whether the owner is logged in
 app.get("/api/owner/me", requireOwner, (req, res) => {
   res.json({
@@ -313,6 +363,315 @@ app.post("/api/owner/logout", requireOwner,requireCsrf, (req, res, next) => {
     });
   });
 });
+
+
+// Public API: list published trainers
+app.get("/api/trainers", async (req, res, next) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name,
+        specialization,
+        experience_years,
+        qualifications,
+        bio,
+        image_url,
+        display_order
+      FROM trainers
+      WHERE is_published = TRUE
+      ORDER BY display_order ASC, id ASC
+    `);
+
+    res.json({
+      success: true,
+      trainers: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// Owner API: list all trainers, including unpublished profiles
+app.get(
+  "/api/owner/trainers",
+  requireOwner,
+  async (req, res, next) => {
+    try {
+      const result = await pool.query(`
+        SELECT
+          id,
+          name,
+          specialization,
+          experience_years,
+          qualifications,
+          bio,
+          image_url,
+          image_public_id,
+          is_published,
+          display_order,
+          created_at,
+          updated_at
+        FROM trainers
+        ORDER BY display_order ASC, id ASC
+      `);
+
+      res.json({
+        success: true,
+        trainers: result.rows,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Owner API: delete a trainer profile and its Cloudinary image
+app.delete(
+  "/api/owner/trainers/:id",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+
+      if (!Number.isSafeInteger(id) || id < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid trainer ID.",
+        });
+      }
+
+      const result = await pool.query(
+        `DELETE FROM trainers
+         WHERE id = $1
+         RETURNING id, image_public_id`,
+        [id]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Trainer not found.",
+        });
+      }
+
+      const { image_public_id } = result.rows[0];
+
+      try {
+        await cloudinary.uploader.destroy(image_public_id, {
+          resource_type: "image",
+        });
+      } catch (imageError) {
+        console.error(
+          "Trainer deleted, but Cloudinary image cleanup failed:",
+          imageError.message
+        );
+      }
+
+      return res.json({
+        success: true,
+        message: "Trainer profile deleted.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Owner API: update a trainer profile
+app.patch(
+  "/api/owner/trainers/:id",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+
+      if (!Number.isSafeInteger(id) || id < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid trainer ID.",
+        });
+      }
+
+      const {
+        name,
+        specialization,
+        experience_years,
+        qualifications,
+        bio,
+        image_url,
+        image_public_id,
+        is_published,
+        display_order,
+      } = req.body || {};
+
+      if (
+        typeof name !== "string" ||
+        name.trim().length < 2 ||
+        name.trim().length > 100 ||
+        typeof specialization !== "string" ||
+        specialization.trim().length < 2 ||
+        specialization.trim().length > 150 ||
+        !Number.isInteger(experience_years) ||
+        experience_years < 0 ||
+        experience_years > 80 ||
+        typeof qualifications !== "string" ||
+        qualifications.length > 250 ||
+        typeof bio !== "string" ||
+        bio.length > 2000 ||
+        typeof image_url !== "string" ||
+        image_url.length > 2048 ||
+        !/^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//.test(image_url) ||
+        typeof image_public_id !== "string" ||
+        image_public_id.length > 255 ||
+        !image_public_id.startsWith("sylas-gym/trainers/") ||
+        typeof is_published !== "boolean" ||
+        !Number.isSafeInteger(display_order) ||
+        display_order < 0 ||
+        display_order > 10000
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid trainer details.",
+        });
+      }
+
+      const result = await pool.query(
+        `UPDATE trainers
+         SET name = $1,
+             specialization = $2,
+             experience_years = $3,
+             qualifications = $4,
+             bio = $5,
+             image_url = $6,
+             image_public_id = $7,
+             is_published = $8,
+             display_order = $9,
+             updated_at = NOW()
+         WHERE id = $10
+         RETURNING id, name, specialization, experience_years,
+           qualifications, bio, image_url, image_public_id,
+           is_published, display_order, created_at, updated_at`,
+        [
+          name.trim(),
+          specialization.trim(),
+          experience_years,
+          qualifications.trim(),
+          bio.trim(),
+          image_url,
+          image_public_id,
+          is_published,
+          display_order,
+          id,
+        ]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Trainer not found.",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Trainer updated successfully.",
+        trainer: result.rows[0],
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Owner API: create a trainer profile
+app.post(
+  "/api/owner/trainers",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const {
+        name,
+        specialization,
+        experience_years,
+        qualifications,
+        bio,
+        image_url,
+        image_public_id,
+      } = req.body || {};
+
+      if (
+        typeof name !== "string" ||
+        name.trim().length < 2 ||
+        name.trim().length > 100 ||
+        typeof specialization !== "string" ||
+        specialization.trim().length < 2 ||
+        specialization.trim().length > 150 ||
+        !Number.isInteger(experience_years) ||
+        experience_years < 0 ||
+        experience_years > 80 ||
+        typeof image_url !== "string" ||
+        image_url.length > 2048 ||
+        !/^https:\/\/res\.cloudinary\.com\/[^/]+\/image\/upload\//.test(image_url) ||
+        typeof image_public_id !== "string" ||
+        image_public_id.length > 255 ||
+        !image_public_id.startsWith("sylas-gym/trainers/")
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid trainer details and a Cloudinary photo.",
+        });
+      }
+
+      if (
+        (qualifications !== undefined &&
+          (typeof qualifications !== "string" || qualifications.length > 250)) ||
+        (bio !== undefined &&
+          (typeof bio !== "string" || bio.length > 2000))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Qualifications or bio exceeds the allowed length.",
+        });
+      }
+
+      const result = await pool.query(
+        `INSERT INTO trainers (
+          name, specialization, experience_years,
+          qualifications, bio, image_url, image_public_id
+        )
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        RETURNING id, name, specialization, experience_years,
+          qualifications, bio, image_url, image_public_id,
+          is_published, display_order, created_at, updated_at`,
+        [
+          name.trim(),
+          specialization.trim(),
+          experience_years,
+          qualifications?.trim() || "",
+          bio?.trim() || "",
+          image_url,
+          image_public_id,
+        ]
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Trainer created successfully.",
+        trainer: result.rows[0],
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
 
 // Public membership enquiry submission
 app.post("/api/enquiries", enquiryLimiter, async (req, res, next) => {

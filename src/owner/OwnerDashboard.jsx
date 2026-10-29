@@ -47,6 +47,26 @@ export default function OwnerDashboard() {
   const [statusFilter, setStatusFilter] = useState('all')
   const [page, setPage] = useState(1)
   const [csrfToken, setCsrfToken] = useState("");
+  const [trainers, setTrainers] = useState([]);
+const [trainerLoading, setTrainerLoading] = useState(false);
+const [trainerError, setTrainerError] = useState("");
+const [trainerMessage, setTrainerMessage] = useState("");
+const [trainerSaving, setTrainerSaving] = useState(false);
+const [editingTrainerId, setEditingTrainerId] = useState(null);
+
+const [trainerForm, setTrainerForm] = useState({
+  name: "",
+  specialization: "",
+  experience_years: 0,
+  qualifications: "",
+  bio: "",
+  image_url: "",
+  image_public_id: "",
+  is_published: false,
+  display_order: 0,
+});
+
+const [trainerPhoto, setTrainerPhoto] = useState(null);
 
   // Wait briefly after typing before searching the server.
   useEffect(() => {
@@ -131,9 +151,190 @@ setCsrfToken(ownerData.csrfToken || "")
     }
   }
 
+  async function loadTrainers() {
+  setTrainerLoading(true);
+  setTrainerError("");
+
+  try {
+    const response = await fetch(`${API_URL}/api/owner/trainers`, {
+      credentials: "include",
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (response.status === 401) {
+      navigate("/owner", { replace: true });
+      return;
+    }
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to load trainers.");
+    }
+
+    setTrainers(data.trainers || []);
+  } catch (err) {
+    setTrainerError(err.message || "Unable to load trainers.");
+  } finally {
+    setTrainerLoading(false);
+  }
+}
+
+async function uploadTrainerPhoto(file) {
+  if (!file) {
+    throw new Error("Please select a trainer photo.");
+  }
+
+  const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+
+  if (!allowedTypes.includes(file.type)) {
+    throw new Error("Choose a JPG, PNG, or WebP image.");
+  }
+
+  if (file.size > 5 * 1024 * 1024) {
+    throw new Error("Trainer photos must be 5 MB or smaller.");
+  }
+
+  const signatureResponse = await fetch(
+    `${API_URL}/api/owner/trainers/upload-signature`,
+    {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "X-CSRF-Token": csrfToken,
+      },
+    }
+  );
+
+  const signatureData = await signatureResponse.json().catch(() => ({}));
+
+  if (!signatureResponse.ok || !signatureData.success) {
+    throw new Error(
+      signatureData.message || "Unable to prepare the photo upload."
+    );
+  }
+
+  const formData = new FormData();
+
+  formData.append("file", file);
+  formData.append("api_key", signatureData.apiKey);
+  formData.append("timestamp", String(signatureData.timestamp));
+  formData.append("folder", signatureData.folder);
+  formData.append("signature", signatureData.signature);
+
+  const uploadResponse = await fetch(
+    `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
+    {
+      method: "POST",
+      body: formData,
+    }
+  );
+
+  const uploadData = await uploadResponse.json().catch(() => ({}));
+
+  if (!uploadResponse.ok || !uploadData.secure_url || !uploadData.public_id) {
+    throw new Error("Photo upload failed. Please try another image.");
+  }
+
+  return {
+    image_url: uploadData.secure_url,
+    image_public_id: uploadData.public_id,
+  };
+}
+
+async function handleTrainerSave(event) {
+  event.preventDefault();
+
+  setTrainerError("");
+  setTrainerMessage("");
+  setTrainerSaving(true);
+
+  try {
+    const name = trainerForm.name.trim();
+    const specialization = trainerForm.specialization.trim();
+
+    if (!name || !specialization) {
+      throw new Error("Enter the trainer's name and specialization.");
+    }
+
+    let photo = {
+      image_url: trainerForm.image_url,
+      image_public_id: trainerForm.image_public_id,
+    };
+
+    if (trainerPhoto) {
+      photo = await uploadTrainerPhoto(trainerPhoto);
+    }
+
+    if (!photo.image_url || !photo.image_public_id) {
+      throw new Error("Please select a trainer photo.");
+    }
+
+    const payload = {
+      ...trainerForm,
+      name,
+      specialization,
+      experience_years: Number(trainerForm.experience_years),
+      display_order: Number(trainerForm.display_order),
+      qualifications: trainerForm.qualifications.trim(),
+      bio: trainerForm.bio.trim(),
+      ...photo,
+    };
+
+    const isEditing = editingTrainerId !== null;
+    const url = isEditing
+      ? `${API_URL}/api/owner/trainers/${editingTrainerId}`
+      : `${API_URL}/api/owner/trainers`;
+
+    const response = await fetch(url, {
+      method: isEditing ? "PATCH" : "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to save the trainer.");
+    }
+
+    setTrainerMessage(
+      isEditing ? "Trainer updated successfully." : "Trainer added successfully."
+    );
+
+    setTrainerForm({
+      name: "",
+      specialization: "",
+      experience_years: 0,
+      qualifications: "",
+      bio: "",
+      image_url: "",
+      image_public_id: "",
+      is_published: false,
+      display_order: 0,
+    });
+
+    setTrainerPhoto(null);
+    setEditingTrainerId(null);
+
+    await loadTrainers();
+  } catch (err) {
+    setTrainerError(err.message || "Unable to save the trainer.");
+  } finally {
+    setTrainerSaving(false);
+  }
+}
+
   useEffect(() => {
     loadDashboard()
   }, [debouncedSearch, statusFilter, page])
+
+  useEffect(() => {
+  loadTrainers()
+}, [])
 
   async function handleStatusChange(enquiryId, newStatus) {
     const previousEnquiries = enquiries
@@ -411,6 +612,246 @@ setCsrfToken(ownerData.csrfToken || "")
           </>
         )}
       </section>
+
+      
+<section className="owner-trainers">
+  <div className="owner-section-heading">
+    <h2>TRAINER MANAGEMENT</h2>
+    <span>{trainers.length} trainers</span>
+  </div>
+
+  <form className="trainer-form" onSubmit={handleTrainerSave}>
+    <h3>{editingTrainerId ? "EDIT TRAINER" : "ADD NEW TRAINER"}</h3>
+
+    <label>
+      Trainer name *
+      <input
+        value={trainerForm.name}
+        onChange={(e) =>
+          setTrainerForm({ ...trainerForm, name: e.target.value })
+        }
+        maxLength={100}
+        required
+      />
+    </label>
+
+    <label>
+      Specialization *
+      <input
+        value={trainerForm.specialization}
+        onChange={(e) =>
+          setTrainerForm({ ...trainerForm, specialization: e.target.value })
+        }
+        maxLength={150}
+        required
+      />
+    </label>
+
+    <label>
+      Experience (years) *
+      <input
+        type="number"
+        min="0"
+        max="80"
+        value={trainerForm.experience_years}
+        onChange={(e) =>
+          setTrainerForm({
+            ...trainerForm,
+            experience_years: Number(e.target.value),
+          })
+        }
+        required
+      />
+    </label>
+
+    <label>
+      Qualifications
+      <input
+        value={trainerForm.qualifications}
+        onChange={(e) =>
+          setTrainerForm({ ...trainerForm, qualifications: e.target.value })
+        }
+        maxLength={250}
+      />
+    </label>
+
+    <label>
+      Short biography
+      <textarea
+        value={trainerForm.bio}
+        onChange={(e) =>
+          setTrainerForm({ ...trainerForm, bio: e.target.value })
+        }
+        maxLength={2000}
+        rows={4}
+      />
+    </label>
+
+    <label>
+      Trainer photo * (JPG, PNG or WebP; max 5 MB)
+      <input
+        type="file"
+        accept="image/jpeg,image/png,image/webp"
+        onChange={(e) => setTrainerPhoto(e.target.files?.[0] || null)}
+        required={!editingTrainerId}
+      />
+    </label>
+
+    <label>
+      Display order
+      <input
+        type="number"
+        min="0"
+        max="10000"
+        value={trainerForm.display_order}
+        onChange={(e) =>
+          setTrainerForm({
+            ...trainerForm,
+            display_order: Number(e.target.value),
+          })
+        }
+      />
+    </label>
+
+    <label className="trainer-publish-option">
+      <input
+        type="checkbox"
+        checked={trainerForm.is_published}
+        onChange={(e) =>
+          setTrainerForm({
+            ...trainerForm,
+            is_published: e.target.checked,
+          })
+        }
+      />
+      Publish trainer on public website
+    </label>
+
+    {trainerError && <p className="owner-error" role="alert">{trainerError}</p>}
+    {trainerMessage && <p role="status">{trainerMessage}</p>}
+
+    <button type="submit" disabled={trainerSaving}>
+      {trainerSaving
+        ? "SAVING..."
+        : editingTrainerId
+          ? "SAVE CHANGES"
+          : "ADD TRAINER"}
+    </button>
+  </form>
+
+  {trainerLoading ? (
+    <p className="owner-loading">Loading trainers...</p>
+  ) : (
+    <div className="trainer-management-list">
+      {trainers.length === 0 ? (
+        <p>No trainer profiles yet. Add your first trainer above.</p>
+      ) : (
+        trainers.map((trainer) => (
+          <article className="trainer-management-card" key={trainer.id}>
+            <img src={trainer.image_url} alt={trainer.name} />
+
+            <div>
+              <h3>{trainer.name}</h3>
+              <p>{trainer.specialization}</p>
+              <p>{trainer.experience_years} years of experience</p>
+              <p>
+                Status: {trainer.is_published ? "Published" : "Unpublished"}
+              </p>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setEditingTrainerId(trainer.id);
+                  setTrainerForm({
+                    name: trainer.name,
+                    specialization: trainer.specialization,
+                    experience_years: trainer.experience_years,
+                    qualifications: trainer.qualifications || "",
+                    bio: trainer.bio || "",
+                    image_url: trainer.image_url,
+                    image_public_id: trainer.image_public_id,
+                    is_published: trainer.is_published,
+                    display_order: trainer.display_order,
+                  });
+                  setTrainerPhoto(null);
+                  setTrainerError("");
+                  setTrainerMessage("");
+                }}
+              >
+                EDIT
+              </button>
+              <button
+  type="button"
+  onClick={async () => {
+    const confirmed = window.confirm(
+      `Delete trainer "${trainer.name}" and their photo? This cannot be undone.`
+    );
+
+    if (!confirmed) return;
+
+    setTrainerError("");
+    setTrainerMessage("");
+
+    try {
+      const response = await fetch(
+        `${API_URL}/api/owner/trainers/${trainer.id}`,
+        {
+          method: "DELETE",
+          credentials: "include",
+          headers: {
+            "X-CSRF-Token": csrfToken,
+          },
+        }
+      );
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || "Unable to delete trainer.");
+      }
+
+      setTrainerMessage("Trainer deleted successfully.");
+      await loadTrainers();
+    } catch (err) {
+      setTrainerError(err.message || "Unable to delete trainer.");
+    }
+  }}
+>
+  DELETE
+</button>
+            </div>
+          </article>
+        ))
+      )}
+    </div>
+  )}
+
+  {editingTrainerId !== null && (
+    <button
+      type="button"
+      onClick={() => {
+        setEditingTrainerId(null);
+        setTrainerPhoto(null);
+        setTrainerError("");
+        setTrainerMessage("");
+        setTrainerForm({
+          name: "",
+          specialization: "",
+          experience_years: 0,
+          qualifications: "",
+          bio: "",
+          image_url: "",
+          image_public_id: "",
+          is_published: false,
+          display_order: 0,
+        });
+      }}
+    >
+      CANCEL EDITING
+    </button>
+  )}
+</section>
+
     </main>
   )
 }
