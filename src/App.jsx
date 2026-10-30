@@ -38,6 +38,12 @@ function App() {
 
   const [trainersError, setTrainersError] = useState("");
 
+  // Membership plans
+const [membershipPlans, setMembershipPlans] = useState([]);
+const [membershipLoading, setMembershipLoading] = useState(true);
+const [membershipError, setMembershipError] = useState("");
+const [selectedPlan, setSelectedPlan] = useState("");
+
 
 
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '')
@@ -185,6 +191,49 @@ function App() {
       cancelled = true;
     };
   }, []);
+
+
+// Load public membership plans
+useEffect(() => {
+  let cancelled = false;
+
+  const loadMembershipPlans = async () => {
+    try {
+      const response = await fetch(
+        `${apiUrl}/api/membership-plans`
+      );
+
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error("Unable to load membership plans.");
+      }
+
+      if (!cancelled) {
+        setMembershipPlans(data.plans || []);
+        setMembershipError("");
+      }
+    } catch (error) {
+      console.error("Membership plans loading failed:", error);
+
+      if (!cancelled) {
+        setMembershipError(
+          "Membership plans are temporarily unavailable."
+        );
+      }
+    } finally {
+      if (!cancelled) {
+        setMembershipLoading(false);
+      }
+    }
+  };
+
+  loadMembershipPlans();
+
+  return () => {
+    cancelled = true;
+  };
+}, []);
 
 
   const closeMenu = () => setMenuOpen(false)
@@ -615,6 +664,82 @@ function App() {
 
 
 
+{/* MEMBERSHIP PLANS SECTION */}
+<section className="membership-plans-section" id="membership">
+  <div className="membership-plans-heading">
+    <p className="section-kicker">MEMBERSHIP — CHOOSE YOUR PLAN</p>
+    <h2>
+      INVEST IN YOUR <span>STRENGTH.</span>
+    </h2>
+    <p>Choose the membership that fits your fitness journey.</p>
+  </div>
+
+  {membershipLoading ? (
+    <p className="membership-message">Loading membership plans...</p>
+  ) : membershipError ? (
+    <p className="membership-message" role="status">
+      {membershipError}
+    </p>
+  ) : membershipPlans.length === 0 ? (
+    <p className="membership-message">
+      Membership plans will be available soon.
+    </p>
+  ) : (
+    <div className="membership-plans-grid">
+      {membershipPlans.map((plan) => (
+        <article
+          className={`membership-plan-card ${
+            plan.name.toLowerCase() === "gold" ? "featured-plan" : ""
+          }`}
+          key={plan.id}
+        >
+          <p className="membership-plan-label">
+            {plan.name}
+          </p>
+
+          <h3>
+            {Number(plan.price).toLocaleString("en-IN", {
+              style: "currency",
+              currency: "INR",
+              maximumFractionDigits: 0,
+            })}
+          </h3>
+
+          <p className="membership-plan-duration">
+            {plan.duration_months}{" "}
+            {plan.duration_months === 1 ? "Month" : "Months"}
+          </p>
+
+          <p className="membership-plan-description">
+            {plan.description}
+          </p>
+
+          <div className="membership-plan-benefits">
+            {plan.benefits.map((benefit, index) => (
+              <p key={`${plan.id}-${index}`}>
+                <span aria-hidden="true">✓</span> {benefit}
+              </p>
+            ))}
+          </div>
+
+          <button
+            type="button"
+            className="button-primary membership-plan-button"
+            onClick={() => {
+              setSelectedPlan(String(plan.id));
+              document
+                .getElementById("contact")
+                ?.scrollIntoView({ behavior: "smooth" });
+            }}
+          >
+            JOIN NOW <ArrowRight size={18} />
+          </button>
+        </article>
+      ))}
+    </div>
+  )}
+</section>
+
 
 
 
@@ -882,6 +1007,7 @@ function App() {
     const memberPhone = String(formData.get("phone") || "").trim();
 
     const goal = String(formData.get("goal") || "");
+    const planId = String(formData.get("plan") || "");
 
 
 
@@ -915,9 +1041,9 @@ function App() {
 
             phone: memberPhone,
 
-            membership: goal,
+            plan_id: Number(planId),
 
-            message: "",
+            goal: goal,
 
           }),
 
@@ -1015,21 +1141,36 @@ function App() {
 
 
 
-  <label htmlFor="member-goal">Your fitness goal</label>
+  <label htmlFor="member-plan">Choose membership plan</label>
 
-  <select id="member-goal" name="goal" defaultValue="">
+<select
+  id="member-plan"
+  name="plan"
+  value={selectedPlan}
+  onChange={(event) => setSelectedPlan(event.target.value)}
+  required
+>
+  <option value="">Select membership plan</option>
 
-    <option value="">Select your goal</option>
+  {membershipPlans.map((plan) => (
+    <option key={plan.id} value={String(plan.id)}>
+      {plan.name} - ₹
+      {Number(plan.price).toLocaleString("en-IN")}
+      / {plan.duration_months}{" "}
+      {plan.duration_months === 1 ? "month" : "months"}
+    </option>
+  ))}
+</select>
 
-    <option value="Build muscle">Build muscle</option>
+<label htmlFor="member-goal">Your fitness goal</label>
 
-    <option value="Lose weight">Lose weight</option>
-
-    <option value="Improve fitness">Improve fitness</option>
-
-    <option value="General fitness">General fitness</option>
-
-  </select>
+<select id="member-goal" name="goal" defaultValue="">
+  <option value="">Select your goal</option>
+  <option value="Build muscle">Build muscle</option>
+  <option value="Lose weight">Lose weight</option>
+  <option value="Improve fitness">Improve fitness</option>
+  <option value="General fitness">General fitness</option>
+</select>
 
 
 
