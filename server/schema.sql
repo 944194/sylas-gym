@@ -30,3 +30,32 @@ CREATE TABLE IF NOT EXISTS trainers (
 
 CREATE INDEX IF NOT EXISTS trainers_published_order_idx
     ON trainers (is_published, display_order, id);
+
+
+CREATE TABLE IF NOT EXISTS membership_plans (
+    id BIGSERIAL PRIMARY KEY,
+
+    name VARCHAR(100) NOT NULL UNIQUE,
+
+    price NUMERIC(10, 2) NOT NULL
+        CHECK (price >= 0),
+
+    duration_months INTEGER NOT NULL
+        CHECK (duration_months BETWEEN 1 AND 60),
+
+    description TEXT NOT NULL DEFAULT '',
+
+    benefits JSONB NOT NULL DEFAULT '[]'::jsonb
+        CHECK (jsonb_typeof(benefits) = 'array'),
+
+    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+
+    display_order INTEGER NOT NULL DEFAULT 0,
+
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS membership_plans_active_order_idx
+    ON membership_plans (is_active, display_order, id);

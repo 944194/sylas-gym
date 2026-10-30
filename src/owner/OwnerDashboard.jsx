@@ -53,6 +53,23 @@ const [trainerError, setTrainerError] = useState("");
 const [trainerMessage, setTrainerMessage] = useState("");
 const [trainerSaving, setTrainerSaving] = useState(false);
 const [editingTrainerId, setEditingTrainerId] = useState(null);
+// Membership plan management
+const [membershipPlans, setMembershipPlans] = useState([]);
+const [membershipLoading, setMembershipLoading] = useState(false);
+const [membershipError, setMembershipError] = useState("");
+const [membershipMessage, setMembershipMessage] = useState("");
+const [membershipSaving, setMembershipSaving] = useState(false);
+const [editingPlanId, setEditingPlanId] = useState(null);
+
+const [membershipForm, setMembershipForm] = useState({
+  name: "",
+  price: "",
+  duration_months: 1,
+  description: "",
+  benefits: "",
+  display_order: 0,
+  is_active: true,
+});
 
 const [trainerForm, setTrainerForm] = useState({
   name: "",
@@ -178,6 +195,117 @@ setCsrfToken(ownerData.csrfToken || "")
     setTrainerLoading(false);
   }
 }
+
+
+async function loadMembershipPlans() {
+  setMembershipLoading(true);
+  setMembershipError("");
+
+  try {
+    const response = await fetch(
+      `${API_URL}/api/owner/membership-plans`,
+      {
+        credentials: "include",
+      }
+    );
+
+    const data = await response.json().catch(() => ({}));
+
+    if (response.status === 401) {
+      navigate("/owner", { replace: true });
+      return;
+    }
+
+    if (!response.ok || !data.success) {
+      throw new Error(
+        data.message || "Unable to load membership plans."
+      );
+    }
+
+    setMembershipPlans(data.plans || []);
+  } catch (err) {
+    setMembershipError(
+      err.message || "Unable to load membership plans."
+    );
+  } finally {
+    setMembershipLoading(false);
+  }
+}
+
+
+
+async function handleMembershipSave(event) {
+  event.preventDefault();
+
+  setMembershipError("");
+  setMembershipMessage("");
+  setMembershipSaving(true);
+
+  try {
+    const payload = {
+      name: membershipForm.name.trim(),
+      price: Number(membershipForm.price),
+      duration_months: Number(membershipForm.duration_months),
+      description: membershipForm.description.trim(),
+      benefits: membershipForm.benefits
+        .split("\n")
+        .map((benefit) => benefit.trim())
+        .filter(Boolean),
+      display_order: Number(membershipForm.display_order),
+      is_active: membershipForm.is_active,
+    };
+
+    const isEditing = editingPlanId !== null;
+
+    const url = isEditing
+      ? `${API_URL}/api/owner/membership-plans/${editingPlanId}`
+      : `${API_URL}/api/owner/membership-plans`;
+
+    const response = await fetch(url, {
+      method: isEditing ? "PATCH" : "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        "X-CSRF-Token": csrfToken,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await response.json().catch(() => ({}));
+
+    if (!response.ok || !data.success) {
+      throw new Error(data.message || "Unable to save membership plan.");
+    }
+
+    setMembershipMessage(
+      isEditing
+        ? "Membership plan updated successfully."
+        : "Membership plan added successfully."
+    );
+
+    setMembershipForm({
+      name: "",
+      price: "",
+      duration_months: 1,
+      description: "",
+      benefits: "",
+      display_order: 0,
+      is_active: true,
+    });
+
+    setEditingPlanId(null);
+
+    await loadMembershipPlans();
+  } catch (err) {
+    setMembershipError(
+      err.message || "Unable to save membership plan."
+    );
+  } finally {
+    setMembershipSaving(false);
+  }
+}
+
+
 
 async function uploadTrainerPhoto(file) {
   if (!file) {
@@ -335,6 +463,10 @@ async function handleTrainerSave(event) {
   useEffect(() => {
   loadTrainers()
 }, [])
+
+useEffect(() => {
+  loadMembershipPlans();
+}, []);
 
   async function handleStatusChange(enquiryId, newStatus) {
     const previousEnquiries = enquiries
@@ -526,6 +658,7 @@ async function handleTrainerSave(event) {
                     <th>ID</th>
                     <th>NAME</th>
                     <th>PHONE</th>
+                    <th>MEMBERSHIP PLAN</th>
                     <th>FITNESS GOAL</th>
                     <th>STATUS</th>
                     <th>DATE</th>
@@ -535,7 +668,7 @@ async function handleTrainerSave(event) {
                 <tbody>
                   {enquiries.length === 0 ? (
                     <tr>
-                      <td colSpan="6" className="owner-empty">
+                      <td colSpan="7" className="owner-empty">
                         {pagination.total === 0
                           ? 'No enquiries match your search or selected filter.'
                           : 'No enquiries on this page.'}
@@ -552,6 +685,9 @@ async function handleTrainerSave(event) {
                           </a>
                         </td>
                         <td>{enquiry.membership || '—'}</td>
+<td>
+  {enquiry.message?.match(/Fitness goal:\s*([^.]*)/)?.[1] || '—'}
+</td>
                         <td>
                           <select
                             className={`owner-status-select owner-status-${enquiry.status}`}
@@ -613,7 +749,255 @@ async function handleTrainerSave(event) {
         )}
       </section>
 
-      
+
+<section className="owner-memberships">
+  <div className="owner-section-heading">
+    <h2>MEMBERSHIP PLAN MANAGEMENT</h2>
+    <span>{membershipPlans.length} plans</span>
+  </div>
+
+  <form
+    className="membership-admin-form"
+    onSubmit={handleMembershipSave}
+  >
+    <h3>{editingPlanId ? "EDIT MEMBERSHIP PLAN" : "ADD NEW MEMBERSHIP PLAN"}</h3>
+
+    <label>
+      Plan name *
+      <input
+        value={membershipForm.name}
+        onChange={(e) =>
+          setMembershipForm({ ...membershipForm, name: e.target.value })
+        }
+        maxLength={100}
+        required
+      />
+    </label>
+
+    <label>
+      Price (₹) *
+      <input
+        type="number"
+        min="0"
+        step="0.01"
+        value={membershipForm.price}
+        onChange={(e) =>
+          setMembershipForm({ ...membershipForm, price: e.target.value })
+        }
+        required
+      />
+    </label>
+
+    <label>
+      Duration (months) *
+      <input
+        type="number"
+        min="1"
+        max="60"
+        value={membershipForm.duration_months}
+        onChange={(e) =>
+          setMembershipForm({
+            ...membershipForm,
+            duration_months: e.target.value,
+          })
+        }
+        required
+      />
+    </label>
+
+    <label>
+      Description
+      <textarea
+        value={membershipForm.description}
+        onChange={(e) =>
+          setMembershipForm({
+            ...membershipForm,
+            description: e.target.value,
+          })
+        }
+      />
+    </label>
+
+    <label>
+      Benefits (enter one benefit per line)
+      <textarea
+        rows={5}
+        placeholder={"Gym access\nPersonal trainer guidance\nLocker access"}
+        value={membershipForm.benefits}
+        onChange={(e) =>
+          setMembershipForm({
+            ...membershipForm,
+            benefits: e.target.value,
+          })
+        }
+      />
+    </label>
+
+    <label>
+      Display order
+      <input
+        type="number"
+        min="0"
+        value={membershipForm.display_order}
+        onChange={(e) =>
+          setMembershipForm({
+            ...membershipForm,
+            display_order: e.target.value,
+          })
+        }
+      />
+    </label>
+
+    <label>
+      <input
+        type="checkbox"
+        checked={membershipForm.is_active}
+        onChange={(e) =>
+          setMembershipForm({
+            ...membershipForm,
+            is_active: e.target.checked,
+          })
+        }
+      />
+      Active — show this plan on the public website
+    </label>
+
+    {membershipError && (
+      <p className="owner-error" role="alert">{membershipError}</p>
+    )}
+
+    {membershipMessage && (
+      <p role="status">{membershipMessage}</p>
+    )}
+
+    <div className="membership-form-actions">
+  <button type="submit" disabled={membershipSaving}>
+    {membershipSaving
+      ? "SAVING..."
+      : editingPlanId
+        ? "SAVE CHANGES"
+        : "ADD MEMBERSHIP PLAN"}
+  </button>
+
+  {editingPlanId !== null && (
+    <button
+      type="button"
+      onClick={() => {
+        setEditingPlanId(null);
+        setMembershipError("");
+        setMembershipMessage("");
+        setMembershipForm({
+          name: "",
+          price: "",
+          duration_months: 1,
+          description: "",
+          benefits: "",
+          display_order: 0,
+          is_active: true,
+        });
+      }}
+    >
+      CANCEL EDITING
+    </button>
+  )}
+</div>
+  </form>
+
+{membershipLoading ? (
+  <p className="owner-loading">Loading membership plans...</p>
+) : (
+  <div className="membership-admin-list">
+    {membershipPlans.length === 0 ? (
+      <p>No membership plans available.</p>
+    ) : (
+      membershipPlans.map((plan) => (
+        <article className="membership-admin-card" key={plan.id}>
+          <div>
+            <h3>{plan.name}</h3>
+            <h4>
+              ₹{Number(plan.price).toLocaleString("en-IN")}
+            </h4>
+            <p>{plan.duration_months} month plan</p>
+            <p>{plan.description}</p>
+            <p>
+              Status: {plan.is_active ? "Active" : "Inactive"}
+            </p>
+            <ul>
+              {plan.benefits.map((benefit, index) => (
+                <li key={`${plan.id}-${index}`}>{benefit}</li>
+              ))}
+            </ul>
+          </div>
+
+          <div className="membership-admin-actions">
+            <button
+              type="button"
+              onClick={() => {
+                setEditingPlanId(plan.id);
+                setMembershipForm({
+                  name: plan.name,
+                  price: String(plan.price),
+                  duration_months: plan.duration_months,
+                  description: plan.description || "",
+                  benefits: plan.benefits.join("\n"),
+                  display_order: plan.display_order,
+                  is_active: plan.is_active,
+                });
+                setMembershipError("");
+                setMembershipMessage("");
+              }}
+            >
+              EDIT
+            </button>
+
+            <button
+              type="button"
+              onClick={async () => {
+                if (!window.confirm(`Delete ${plan.name} membership plan?`)) {
+                  return;
+                }
+
+                setMembershipError("");
+                setMembershipMessage("");
+
+                try {
+                  const response = await fetch(
+                    `${API_URL}/api/owner/membership-plans/${plan.id}`,
+                    {
+                      method: "DELETE",
+                      credentials: "include",
+                      headers: {
+                        "X-CSRF-Token": csrfToken,
+                      },
+                    }
+                  );
+
+                  const data = await response.json().catch(() => ({}));
+
+                  if (!response.ok || !data.success) {
+                    throw new Error(data.message || "Unable to delete plan.");
+                  }
+
+                  setMembershipMessage("Membership plan deleted successfully.");
+                  await loadMembershipPlans();
+                } catch (err) {
+                  setMembershipError(err.message);
+                }
+              }}
+            >
+              DELETE
+            </button>
+          </div>
+        </article>
+      ))
+    )}
+  </div>
+)}
+
+</section>
+
+
+
 <section className="owner-trainers">
   <div className="owner-section-heading">
     <h2>TRAINER MANAGEMENT</h2>
