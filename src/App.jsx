@@ -254,13 +254,13 @@ useEffect(() => {
 
     src="/images/sylas-gym-logo.png"
 
-    alt="Sylas Gym logo"
+    alt="AURAFIT Gym logo"
 
   />
 
   <span className="brand-name">
 
-    SYLAS<span className="brand-accent">GYM</span>
+    AURAFIT <span className="brand-accent">GYM</span>
 
     <small>TRAIN WITH PURPOSE</small>
 
@@ -816,7 +816,7 @@ useEffect(() => {
 
           <p>
 
-            Established on February 10, 2020, Sylas Gym was built to be more than
+            Established on January 28, 2017, Aurafit Gym was built to be more than
 
             a fitness facility — a community where people can work towards their
 
@@ -826,7 +826,7 @@ useEffect(() => {
 
           <p>
 
-            Every member is part of the Sylas family. Show up, put in the work,
+            Every member is part of the Aurafit family. Show up, put in the work,
 
             and keep moving forward.
 
@@ -838,9 +838,9 @@ useEffect(() => {
 
           <img
 
-            src="/gym-gallery/owner-ajith-paul-syla.jpg"
+            src="/gym-gallery/owner.jpg"
 
-            alt="Ajith Paul Syla, proprietor of Sylas Gym"
+            alt="AUTRAFIT owner, proprietor of AURAFIT Gym"
 
             loading="lazy"
 
@@ -850,9 +850,9 @@ useEffect(() => {
 
             <span className="owner-label">THE PROPRIETOR</span>
 
-            <h3>Ajith Paul Syla</h3>
+            <h3>AUTRAFIT owner</h3>
 
-            <p>Proprietor, Sylas Gym</p>
+            <p>Proprietor, AURAFIT Gym</p>
 
           </div>
 
@@ -1396,13 +1396,13 @@ useEffect(() => {
 
     src="/images/sylas-gym-logo.png"
 
-    alt="Sylas Gym logo"
+    alt="AURAFIT Gym logo"
 
   />
 
   <span className="brand-name">
 
-    SYLAS<span className="brand-accent">GYM</span>
+    AYRAFIT <span className="brand-accent">GYM</span>
 
   </span>
 
