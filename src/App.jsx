@@ -237,6 +237,8 @@ function App() {
 
           <a className="nav-item" href="#contact" onClick={closeMenu}>CONTACT</a>
 
+          <a className="nav-item login-nav-link" href="/login" onClick={closeMenu}>LOGIN</a>
+
           <a className="mobile-join" href="#contact" onClick={closeMenu}>JOIN NOW ↗</a>
 
         </div>

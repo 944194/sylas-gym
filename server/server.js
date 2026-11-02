@@ -167,6 +167,20 @@ const enquiryLimiter = rateLimit({
 
 
 
+const clientRegisterLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: "draft-8",
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: "Too many registration attempts. Please try again later.",
+  },
+});
+
+
+
+
 // Check whether the backend is running
 app.get("/api/health", (req, res) => {
   res.json({
@@ -181,6 +195,18 @@ function requireOwner(req, res, next) {
     return res.status(401).json({
       success: false,
       message: "Please log in to access this resource.",
+    });
+  }
+
+  next();
+}
+
+// Require an authenticated client session
+function requireClient(req, res, next) {
+  if (!req.session.clientId) {
+    return res.status(401).json({
+      success: false,
+      message: "Please log in to access your client dashboard.",
     });
   }
 
@@ -218,6 +244,459 @@ function requireCsrf(req, res, next) {
   next();
 }
 
+
+// Client self-registration
+app.post(
+  "/api/client/register",
+  clientRegisterLimiter,
+  async (req, res, next) => {
+    try {
+      const { fullName, email, phone, password } = req.body || {};
+
+      // Validate registration details
+      if (
+        typeof fullName !== "string" ||
+        typeof email !== "string" ||
+        typeof phone !== "string" ||
+        typeof password !== "string" ||
+        fullName.trim().length < 2 ||
+        fullName.trim().length > 100 ||
+        email.trim().length > 255 ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
+        !/^[0-9+\s()-]{7,20}$/.test(phone.trim()) ||
+        password.length < 8 ||
+        Buffer.byteLength(password, "utf8") > 72
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid registration details. Password must be at least 8 characters.",
+        });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // Check whether email is already registered
+      const existingClient = await pool.query(
+        "SELECT id FROM clients WHERE LOWER(email) = $1",
+        [normalizedEmail]
+      );
+
+      if (existingClient.rowCount > 0) {
+        return res.status(409).json({
+          success: false,
+          message: "An account with this email already exists.",
+        });
+      }
+
+      // Securely hash the password
+      const passwordHash = await bcrypt.hash(password, 12);
+
+      // Save the new client as pending
+      const result = await pool.query(
+        `INSERT INTO clients (
+          full_name,
+          email,
+          phone,
+          password_hash,
+          status
+        )
+        VALUES ($1, $2, $3, $4, 'active')
+        RETURNING id, full_name, email, phone, status, created_at`,
+        [
+          fullName.trim(),
+          normalizedEmail,
+          phone.trim(),
+          passwordHash,
+        ]
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Registration successful. You can now log in to your AURAFIT account.",
+        client: result.rows[0],
+      });
+
+    } catch (error) {
+      // Handle duplicate email requests safely
+      if (error.code === "23505") {
+        return res.status(409).json({
+          success: false,
+          message: "An account with this email already exists.",
+        });
+      }
+
+      next(error);
+    }
+  }
+);
+
+
+// Client login
+app.post(
+  "/api/client/login",
+  loginLimiter,
+  async (req, res, next) => {
+    try {
+      const { email, password } = req.body || {};
+
+      if (
+        typeof email !== "string" ||
+        typeof password !== "string" ||
+        !email.trim() ||
+        !password
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter your email and password.",
+        });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      const result = await pool.query(
+        `SELECT id, full_name, email, phone, password_hash, status
+         FROM clients
+         WHERE LOWER(email) = $1`,
+        [normalizedEmail]
+      );
+
+      const client = result.rows[0];
+
+      if (!client || !(await bcrypt.compare(password, client.password_hash))) {
+        return res.status(401).json({
+          success: false,
+          message: "Invalid email or password.",
+        });
+      }
+
+      if (client.status !== "active") {
+        return res.status(403).json({
+          success: false,
+          message: "Your account is currently suspended. Please contact the gym owner.",
+        });
+      }
+
+      // Regenerate the session after successful authentication
+      req.session.regenerate((error) => {
+        if (error) {
+          return next(error);
+        }
+
+        req.session.clientId = client.id;
+        req.session.clientName = client.full_name;
+        req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+
+        req.session.save((saveError) => {
+          if (saveError) {
+            return next(saveError);
+          }
+
+          return res.json({
+            success: true,
+            message: "Client login successful.",
+            client: {
+              id: client.id,
+              fullName: client.full_name,
+              email: client.email,
+              phone: client.phone,
+            },
+            csrfToken: req.session.csrfToken,
+          });
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get logged-in client profile
+app.get("/api/client/me", requireClient, async (req, res, next) => {
+  try {
+    const result = await pool.query(
+      `SELECT id, full_name, email, phone, status, created_at
+       FROM clients
+       WHERE id = $1`,
+      [req.session.clientId]
+    );
+
+    if (result.rowCount === 0) {
+      return res.status(404).json({
+        success: false,
+        message: "Client account not found.",
+      });
+    }
+
+    return res.json({
+      success: true,
+      client: result.rows[0],
+      csrfToken: req.session.csrfToken,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// Owner API: list and search registered clients
+app.get("/api/owner/clients", requireOwner, async (req, res, next) => {
+  try {
+    const search = String(req.query.search || "").trim().slice(0, 100);
+
+    const result = await pool.query(
+      `SELECT
+         id,
+         member_id::text AS member_id,
+         full_name,
+         email,
+         phone,
+         status,
+         created_at
+       FROM clients
+       WHERE (
+         $1 = ''
+         OR full_name ILIKE $2
+         OR email ILIKE $2
+         OR phone ILIKE $2
+         OR member_id::text ILIKE $2
+       )
+       ORDER BY created_at DESC, id DESC
+       LIMIT 100`,
+      [search, `%${search}%`]
+    );
+
+    return res.json({
+      success: true,
+      clients: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// Owner API: list active membership plans
+app.get(
+  "/api/owner/membership-plans",
+  requireOwner,
+  async (req, res, next) => {
+    try {
+      const result = await pool.query(
+        `SELECT
+           id,
+           name,
+           price,
+           duration_months,
+           description,
+           benefits
+         FROM membership_plans
+         WHERE is_active = TRUE
+         ORDER BY display_order ASC, id ASC`
+      );
+
+      return res.json({
+        success: true,
+        plans: result.rows,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Owner API: assign a membership to a client
+app.post(
+  "/api/owner/clients/:clientId/membership",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    const clientId = Number(req.params.clientId);
+    const {
+      membershipPlanId,
+      amountPaid = 0,
+      paymentMethod,
+    } = req.body || {};
+
+    if (
+      !Number.isSafeInteger(clientId) ||
+      clientId < 1 ||
+      !Number.isSafeInteger(Number(membershipPlanId)) ||
+      Number(membershipPlanId) < 1 ||
+      typeof amountPaid !== "number" ||
+      !Number.isFinite(amountPaid) ||
+      amountPaid < 0 ||
+      !["cash", "upi", "other"].includes(paymentMethod)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide valid membership and payment details.",
+      });
+    }
+
+    const dbClient = await pool.connect();
+
+    try {
+      await dbClient.query("BEGIN");
+
+      // Lock the client to prevent simultaneous membership assignments.
+      const clientResult = await dbClient.query(
+        `SELECT id, full_name, status, member_id
+         FROM clients
+         WHERE id = $1
+         FOR UPDATE`,
+        [clientId]
+      );
+
+      if (clientResult.rowCount === 0) {
+        await dbClient.query("ROLLBACK");
+        return res.status(404).json({
+          success: false,
+          message: "Client not found.",
+        });
+      }
+
+      const client = clientResult.rows[0];
+
+      if (client.status !== "active") {
+        await dbClient.query("ROLLBACK");
+        return res.status(403).json({
+          success: false,
+          message: "This client account is suspended.",
+        });
+      }
+
+      // Verify the selected plan is active.
+      const planResult = await dbClient.query(
+        `SELECT id, name, price, duration_months
+         FROM membership_plans
+         WHERE id = $1 AND is_active = TRUE`,
+        [Number(membershipPlanId)]
+      );
+
+      if (planResult.rowCount === 0) {
+        await dbClient.query("ROLLBACK");
+        return res.status(404).json({
+          success: false,
+          message: "Membership plan not found or inactive.",
+        });
+      }
+
+      const plan = planResult.rows[0];
+      const planPrice = Number(plan.price);
+
+      if (amountPaid > planPrice) {
+        await dbClient.query("ROLLBACK");
+        return res.status(400).json({
+          success: false,
+          message: "Amount paid cannot exceed the plan price.",
+        });
+      }
+
+      // Generate a Member ID only for the client's first membership.
+      let memberId = client.member_id;
+
+      if (memberId === null) {
+        const memberResult = await dbClient.query(
+          `UPDATE clients
+           SET member_id = nextval('gym_member_id_seq')
+           WHERE id = $1 AND member_id IS NULL
+           RETURNING member_id::text AS member_id`,
+          [clientId]
+        );
+
+        memberId = memberResult.rows[0].member_id;
+      } else {
+        memberId = String(memberId);
+      }
+
+      // Mark old memberships as expired when their expiry date has passed.
+      await dbClient.query(
+        `UPDATE client_memberships
+         SET status = 'expired',
+             updated_at = NOW()
+         WHERE client_id = $1
+           AND status = 'active'
+           AND expiry_date < CURRENT_DATE`,
+        [clientId]
+      );
+
+      // Start a new membership after any currently active membership.
+      const startResult = await dbClient.query(
+        `SELECT GREATEST(
+           CURRENT_DATE,
+           COALESCE(MAX(expiry_date) + 1, CURRENT_DATE)
+         )::date AS start_date
+         FROM client_memberships
+         WHERE client_id = $1
+           AND status = 'active'
+           AND expiry_date >= CURRENT_DATE`,
+        [clientId]
+      );
+
+      const startDate = startResult.rows[0].start_date;
+
+      const paymentStatus =
+        amountPaid >= planPrice ? "paid" : "pending";
+
+      // Save the membership and payment details.
+      const membershipResult = await dbClient.query(
+        `INSERT INTO client_memberships (
+           client_id,
+           membership_plan_id,
+           plan_name,
+           price,
+           duration_months,
+           start_date,
+           expiry_date,
+           status,
+           payment_status,
+           amount_paid,
+           payment_method
+         )
+         VALUES (
+           $1, $2, $3, $4, $5, $6,
+           (
+             $6::date
+             + ($5::int * INTERVAL '1 month')
+             - INTERVAL '1 day'
+           )::date,
+           'active',
+           $7,
+           $8,
+           $9
+         )
+         RETURNING *`,
+        [
+          clientId,
+          plan.id,
+          plan.name,
+          plan.price,
+          plan.duration_months,
+          startDate,
+          paymentStatus,
+          amountPaid,
+          paymentMethod,
+        ]
+      );
+
+      await dbClient.query("COMMIT");
+
+      return res.status(201).json({
+        success: true,
+        message: "Membership assigned successfully.",
+        memberId,
+        clientName: client.full_name,
+        membership: membershipResult.rows[0],
+      });
+    } catch (error) {
+      await dbClient.query("ROLLBACK");
+      next(error);
+    } finally {
+      dbClient.release();
+    }
+  }
+);
 
 // Owner login
 app.post("/api/owner/login", loginLimiter, async (req, res, next) => {

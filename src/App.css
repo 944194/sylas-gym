@@ -1592,3 +1592,30 @@ img {
     transform: none;
   }
 }
+
+
+
+/* AURAFIT client and owner login navigation */
+
+.login-nav-link {
+  color: #f04438 !important;
+  font-weight: 900 !important;
+  letter-spacing: 1.5px;
+  transition: color 0.25s ease;
+}
+
+.login-nav-link:hover {
+  color: #ffffff !important;
+}
+
+.login-nav-link::after {
+  content: " ↗";
+}
+
+@media (max-width: 700px) {
+  .login-nav-link {
+    display: block;
+    padding: 13px 0;
+    font-size: 11px;
+  }
+}

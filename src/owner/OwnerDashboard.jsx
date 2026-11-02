@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import ClientManagement from './ClientManagement'
 import {
   Users,
   UserPlus,
@@ -612,6 +613,8 @@ async function handleTrainerSave(event) {
           </>
         )}
       </section>
+
+      <ClientManagement csrfToken={csrfToken} />
 
       
 <section className="owner-trainers">
