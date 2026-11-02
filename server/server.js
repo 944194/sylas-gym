@@ -1152,9 +1152,292 @@ app.post(
   }
 );
 
+
+// ==========================================
+// MEMBERSHIP PLAN APIs
+// ==========================================
+
+// Public API: Get all active membership plans
+app.get("/api/membership-plans", async (req, res, next) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        id,
+        name,
+        price,
+        duration_months,
+        description,
+        benefits,
+        display_order
+      FROM membership_plans
+      WHERE is_active = TRUE
+      ORDER BY display_order ASC, id ASC
+    `);
+
+    res.json({
+      success: true,
+      plans: result.rows,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Owner API: Get all membership plans
+app.get(
+  "/api/owner/membership-plans",
+  requireOwner,
+  async (req, res, next) => {
+    try {
+      const result = await pool.query(`
+        SELECT *
+        FROM membership_plans
+        ORDER BY display_order ASC, id ASC
+      `);
+
+      res.json({
+        success: true,
+        plans: result.rows,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Owner API: Create a membership plan
+app.post(
+  "/api/owner/membership-plans",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const {
+        name,
+        price,
+        duration_months,
+        description,
+        benefits,
+        display_order,
+      } = req.body || {};
+
+      if (
+        typeof name !== "string" ||
+        name.trim().length < 2 ||
+        name.trim().length > 100 ||
+        typeof price !== "number" ||
+        !Number.isFinite(price) ||
+        price < 0 ||
+        price > 10000000 ||
+        !Number.isInteger(duration_months) ||
+        duration_months < 1 ||
+        duration_months > 60 ||
+        typeof description !== "string" ||
+        description.length > 1000 ||
+        !Array.isArray(benefits) ||
+        benefits.length > 30 ||
+        benefits.some(
+          (item) =>
+            typeof item !== "string" ||
+            item.trim().length === 0 ||
+            item.length > 150
+        ) ||
+        (display_order !== undefined &&
+          (!Number.isSafeInteger(display_order) ||
+            display_order < 0 ||
+            display_order > 10000))
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid membership plan details.",
+        });
+      }
+
+      const result = await pool.query(
+        `INSERT INTO membership_plans (
+          name, price, duration_months,
+          description, benefits, display_order
+        )
+        VALUES ($1, $2, $3, $4, $5::jsonb, $6)
+        RETURNING *`,
+        [
+          name.trim(),
+          price,
+          duration_months,
+          description.trim(),
+          JSON.stringify(benefits.map((item) => item.trim())),
+          display_order ?? 0,
+        ]
+      );
+
+      res.status(201).json({
+        success: true,
+        message: "Membership plan created successfully.",
+        plan: result.rows[0],
+      });
+    } catch (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({
+          success: false,
+          message: "A membership plan with this name already exists.",
+        });
+      }
+      next(error);
+    }
+  }
+);
+
+// Owner API: Update a membership plan
+app.patch(
+  "/api/owner/membership-plans/:id",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+
+      if (!Number.isSafeInteger(id) || id < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid membership plan ID.",
+        });
+      }
+
+      const {
+        name,
+        price,
+        duration_months,
+        description,
+        benefits,
+        is_active,
+        display_order,
+      } = req.body || {};
+
+      if (
+        typeof name !== "string" ||
+        name.trim().length < 2 ||
+        name.trim().length > 100 ||
+        typeof price !== "number" ||
+        !Number.isFinite(price) ||
+        price < 0 ||
+        price > 10000000 ||
+        !Number.isInteger(duration_months) ||
+        duration_months < 1 ||
+        duration_months > 60 ||
+        typeof description !== "string" ||
+        description.length > 1000 ||
+        !Array.isArray(benefits) ||
+        benefits.length > 30 ||
+        benefits.some(
+          (item) =>
+            typeof item !== "string" ||
+            item.trim().length === 0 ||
+            item.length > 150
+        ) ||
+        typeof is_active !== "boolean" ||
+        !Number.isSafeInteger(display_order) ||
+        display_order < 0 ||
+        display_order > 10000
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid membership plan details.",
+        });
+      }
+
+      const result = await pool.query(
+        `UPDATE membership_plans
+         SET name = $1,
+             price = $2,
+             duration_months = $3,
+             description = $4,
+             benefits = $5::jsonb,
+             is_active = $6,
+             display_order = $7,
+             updated_at = NOW()
+         WHERE id = $8
+         RETURNING *`,
+        [
+          name.trim(),
+          price,
+          duration_months,
+          description.trim(),
+          JSON.stringify(benefits.map((item) => item.trim())),
+          is_active,
+          display_order,
+          id,
+        ]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Membership plan not found.",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Membership plan updated successfully.",
+        plan: result.rows[0],
+      });
+    } catch (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({
+          success: false,
+          message: "A membership plan with this name already exists.",
+        });
+      }
+      next(error);
+    }
+  }
+);
+
+// Owner API: Delete a membership plan
+app.delete(
+  "/api/owner/membership-plans/:id",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+
+      if (!Number.isSafeInteger(id) || id < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid membership plan ID.",
+        });
+      }
+
+      const result = await pool.query(
+        `DELETE FROM membership_plans
+         WHERE id = $1
+         RETURNING id`,
+        [id]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Membership plan not found.",
+        });
+      }
+
+      res.json({
+        success: true,
+        message: "Membership plan deleted successfully.",
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+
 // Public membership enquiry submission
 app.post("/api/enquiries", enquiryLimiter, async (req, res, next) => {
-  const { name, phone, membership, message } = req.body || {};
+  const { name, phone, plan_id, goal } = req.body || {};
 
   if (
     typeof name !== "string" ||
@@ -1162,10 +1445,10 @@ app.post("/api/enquiries", enquiryLimiter, async (req, res, next) => {
     name.trim().length < 2 ||
     name.trim().length > 100 ||
     !/^[0-9+\s()-]{7,20}$/.test(phone.trim()) ||
-    (membership !== undefined &&
-      (typeof membership !== "string" || membership.length > 100)) ||
-    (message !== undefined &&
-      (typeof message !== "string" || message.length > 1000))
+    !Number.isSafeInteger(Number(plan_id)) ||
+    Number(plan_id) <= 0 ||
+    typeof goal !== "string" ||
+    goal.length > 100
   ) {
     return res.status(400).json({
       success: false,
@@ -1174,38 +1457,59 @@ app.post("/api/enquiries", enquiryLimiter, async (req, res, next) => {
   }
 
   try {
+    // Verify the selected plan using the database
+    const planResult = await pool.query(
+      `SELECT id, name, price, duration_months
+       FROM membership_plans
+       WHERE id = $1 AND is_active = TRUE`,
+      [Number(plan_id)]
+    );
+
+    if (planResult.rows.length === 0) {
+      return res.status(400).json({
+        success: false,
+        message: "The selected membership plan is unavailable.",
+      });
+    }
+
+    const selectedPlan = planResult.rows[0];
+
+    const enquiryMessage =
+      `Fitness goal: ${goal.trim()}. ` +
+      `Selected plan price: ₹${Number(selectedPlan.price).toLocaleString("en-IN")}.`;
+
     const result = await pool.query(
       `INSERT INTO enquiries (name, phone, membership, message)
        VALUES ($1, $2, $3, $4)
-       RETURNING id, name, phone, membership, status, created_at`,
+       RETURNING id, name, phone, membership, message, status, created_at`,
       [
         name.trim(),
         phone.trim(),
-        membership?.trim() || null,
-        message?.trim() || "",
+        selectedPlan.name,
+        enquiryMessage,
       ]
     );
 
-    
-const savedEnquiry = result.rows[0];
+    const savedEnquiry = result.rows[0];
 
-const ownerMessage =
-  `Sylas Gym: New membership enquiry from ${savedEnquiry.name}. ` +
-  `Phone: ${savedEnquiry.phone}. ` +
-  `Goal: ${savedEnquiry.membership || "Not specified"}.`;
+    const ownerMessage =
+      `Sylas Gym: New membership enquiry from ${savedEnquiry.name}. ` +
+      `Phone: ${savedEnquiry.phone}. ` +
+      `Plan: ${selectedPlan.name}. ` +
+      `Goal: ${goal.trim()}.`;
 
-void sendOwnerSms(ownerMessage);
-
+    void sendOwnerSms(ownerMessage);
 
     res.status(201).json({
       success: true,
       message: "Your membership enquiry was saved successfully.",
-      enquiry: result.rows[0],
+      enquiry: savedEnquiry,
     });
   } catch (error) {
     next(error);
   }
 });
+
 
 // Only logged-in owners can view enquiries
 

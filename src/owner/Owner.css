@@ -555,3 +555,124 @@
     height: 104px;
   }
 }
+
+
+
+/* Membership Plan Management */
+
+.owner-memberships {
+  margin-top: 40px;
+  padding: 28px;
+  background: #151515;
+  border: 1px solid #333;
+  border-radius: 12px;
+}
+
+.membership-admin-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
+  margin: 25px 0;
+}
+
+.membership-admin-form h3 {
+  grid-column: 1 / -1;
+}
+
+.membership-admin-form label {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  color: #ddd;
+}
+
+.membership-admin-form input,
+.membership-admin-form textarea {
+  width: 100%;
+  padding: 12px;
+  color: white;
+  background: #222;
+  border: 1px solid #444;
+  border-radius: 6px;
+}
+
+.membership-admin-form label:has(input[type="checkbox"]) {
+  flex-direction: row;
+  align-items: center;
+}
+
+.membership-admin-form input[type="checkbox"] {
+  width: auto;
+}
+
+.membership-admin-form button,
+.membership-admin-actions button {
+  padding: 12px 18px;
+  border: none;
+  border-radius: 6px;
+  background: #d4ff00;
+  color: #111;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.membership-admin-form button {
+  grid-column: 1 / -1;
+}
+
+.membership-admin-form button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.membership-admin-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin-top: 25px;
+}
+
+.membership-admin-card {
+  padding: 22px;
+  background: #202020;
+  border: 1px solid #383838;
+  border-radius: 10px;
+}
+
+.membership-admin-card h3 {
+  margin-top: 0;
+}
+
+.membership-admin-card h4 {
+  color: #d4ff00;
+  font-size: 24px;
+}
+
+.membership-admin-card li {
+  margin: 8px 0;
+  color: #ccc;
+}
+
+.membership-admin-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+@media (max-width: 800px) {
+  .membership-admin-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 600px) {
+  .owner-memberships {
+    padding: 16px;
+  }
+
+  .membership-admin-form,
+  .membership-admin-list {
+    grid-template-columns: 1fr;
+  }
+}

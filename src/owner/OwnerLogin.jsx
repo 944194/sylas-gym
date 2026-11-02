@@ -87,7 +87,7 @@ export default function OwnerLogin() {
         </form>
 
         <a href="/" className="owner-back-link">
-          ← Back to Sylas Gym
+          ← Back to AURAFIT Gym
         </a>
       </div>
     </main>
