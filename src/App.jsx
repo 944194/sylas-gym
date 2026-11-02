@@ -205,13 +205,13 @@ function App() {
 
     src="/images/sylas-gym-logo.png"
 
-    alt="Sylas Gym logo"
+    alt="AURAFIT Gym logo"
 
   />
 
   <span className="brand-name">
 
-    SYLAS<span className="brand-accent">GYM</span>
+    AURAFIT <span className="brand-accent">GYM</span>
 
     <small>TRAIN WITH PURPOSE</small>
 
@@ -627,7 +627,7 @@ function App() {
 
           <div>
 
-            <p className="section-kicker">03 — INSIDE SYLAS</p>
+            <p className="section-kicker">03 — INSIDE AURAFIT</p>
 
             <h2>THE SPACE.<br /><span>THE WORK.</span></h2>
 
@@ -1263,7 +1263,7 @@ function App() {
 
   <span className="brand-name">
 
-    SYLAS<span className="brand-accent">GYM</span>
+    AURAFIT <span className="brand-accent">GYM</span>
 
   </span>
 

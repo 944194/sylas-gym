@@ -438,7 +438,7 @@ async function handleTrainerSave(event) {
     <main className="owner-dashboard">
       <header className="owner-dashboard-header">
         <div>
-          <p className="owner-kicker">SYLAS GYM / MANAGEMENT</p>
+          <p className="owner-kicker">AURAFIT GYM / MANAGEMENT</p>
           <h1>OWNER DASHBOARD</h1>
           {owner && (
             <p className="owner-subtitle">

@@ -51,7 +51,7 @@ export default function OwnerLogin() {
           <LockKeyhole size={30} />
         </div>
 
-        <p className="owner-kicker">SYLAS GYM / PRIVATE ACCESS</p>
+        <p className="owner-kicker">AURAFIT GYM / PRIVATE ACCESS</p>
         <h1>OWNER LOGIN</h1>
         <p className="owner-subtitle">
           Sign in to manage your gym membership enquiries.
