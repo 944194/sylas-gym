@@ -1,0 +1,54 @@
+.client-account-picker {
+  margin-top: 28px;
+  display: grid;
+  gap: 12px;
+}
+.client-account-picker h2 {
+  margin: 0;
+  font-size: 18px;
+}
+.client-account-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 10px;
+  background: #171717;
+  color: #fff;
+  text-align: left;
+  cursor: pointer;
+}
+.client-account-option:hover {
+  border-color: #f04438;
+  background: #201615;
+}
+.client-account-option:disabled {
+  opacity: .65;
+  cursor: wait;
+}
+.client-account-avatar {
+  width: 38px;
+  height: 38px;
+  flex: 0 0 38px;
+  display: grid;
+  place-items: center;
+  border-radius: 9px;
+  color: #f04438;
+  background: rgba(240,68,56,.12);
+}
+.client-account-details {
+  min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 4px;
+}
+.client-account-details small {
+  color: #aaa;
+}
+.client-account-action {
+  color: #f04438;
+  font-size: 12px;
+  font-weight: 800;
+}

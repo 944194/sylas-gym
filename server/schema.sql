@@ -117,6 +117,48 @@ START WITH 100001
 INCREMENT BY 1;
 
 
+BEGIN;
+
+-- Public website registrations
+CREATE TABLE IF NOT EXISTS registered_users (
+    id BIGSERIAL PRIMARY KEY,
+    full_name VARCHAR(100) NOT NULL,
+    email VARCHAR(255) NOT NULL,
+    phone VARCHAR(20) NOT NULL,
+    password_hash TEXT NOT NULL,
+    status VARCHAR(20) NOT NULL DEFAULT 'active'
+        CHECK (status IN ('active', 'suspended')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Prevent duplicate email addresses (case-insensitive)
+CREATE UNIQUE INDEX IF NOT EXISTS
+registered_users_email_unique_idx
+ON registered_users (LOWER(email));
+
+-- Enquiries submitted by registered website users
+CREATE TABLE IF NOT EXISTS registered_user_enquiries (
+    id BIGSERIAL PRIMARY KEY,
+    user_id BIGINT NOT NULL
+        REFERENCES registered_users(id) ON DELETE CASCADE,
+    membership_plan_id BIGINT
+        REFERENCES membership_plans(id) ON DELETE SET NULL,
+    plan_name VARCHAR(100),
+    message TEXT,
+    status VARCHAR(20) NOT NULL DEFAULT 'new'
+        CHECK (status IN ('new', 'contacted', 'closed')),
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS
+registered_user_enquiries_user_idx
+ON registered_user_enquiries(user_id);
+
+COMMIT;
+
+
 -- 2. Add the Member ID column to clients
 ALTER TABLE clients
 ADD COLUMN IF NOT EXISTS member_id BIGINT;

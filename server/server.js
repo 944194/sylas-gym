@@ -245,248 +245,349 @@ function requireCsrf(req, res, next) {
 }
 
 
-// Client self-registration
+// Require an authenticated public website user
+function requireRegisteredUser(req, res, next) {
+  if (!req.session.registeredUserId) {
+    return res.status(401).json({
+      success: false,
+      message: "Please log in to access your account.",
+    });
+  }
+
+  next();
+}
+
+
+
+// Public user registration (mobile-number login; no user-entered password).
 app.post(
-  "/api/client/register",
+  "/api/user/register",
   clientRegisterLimiter,
   async (req, res, next) => {
     try {
-      const { fullName, email, phone, password } = req.body || {};
-
-      // Validate registration details
-      if (
-        typeof fullName !== "string" ||
-        typeof email !== "string" ||
-        typeof phone !== "string" ||
-        typeof password !== "string" ||
-        fullName.trim().length < 2 ||
-        fullName.trim().length > 100 ||
-        email.trim().length > 255 ||
-        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
-        !/^[0-9+\s()-]{7,20}$/.test(phone.trim()) ||
-        password.length < 8 ||
-        Buffer.byteLength(password, "utf8") > 72
-      ) {
-        return res.status(400).json({
-          success: false,
-          message: "Please provide valid registration details. Password must be at least 8 characters.",
-        });
-      }
-
-      const normalizedEmail = email.trim().toLowerCase();
-
-      // Check whether email is already registered
-      const existingClient = await pool.query(
-        "SELECT id FROM clients WHERE LOWER(email) = $1",
-        [normalizedEmail]
-      );
-
-      if (existingClient.rowCount > 0) {
-        return res.status(409).json({
-          success: false,
-          message: "An account with this email already exists.",
-        });
-      }
-
-      // Securely hash the password
-      const passwordHash = await bcrypt.hash(password, 12);
-
-      // Save the new client as pending
-      const result = await pool.query(
-        `INSERT INTO clients (
-          full_name,
-          email,
-          phone,
-          password_hash,
-          status
-        )
-        VALUES ($1, $2, $3, $4, 'active')
-        RETURNING id, full_name, email, phone, status, created_at`,
-        [
-          fullName.trim(),
-          normalizedEmail,
-          phone.trim(),
-          passwordHash,
-        ]
-      );
-
-      return res.status(201).json({
-        success: true,
-        message: "Registration successful. You can now log in to your AURAFIT account.",
-        client: result.rows[0],
-      });
-
-    } catch (error) {
-      // Handle duplicate email requests safely
-      if (error.code === "23505") {
-        return res.status(409).json({
-          success: false,
-          message: "An account with this email already exists.",
-        });
-      }
-
-      next(error);
-    }
-  }
-);
-
-
-
-// Owner creates a new client account
-app.post(
-  "/api/owner/clients",
-  requireOwner,
-  requireCsrf,
-  async (req, res, next) => {
-    try {
       const { fullName, email, phone } = req.body || {};
+      const normalizedPhone = typeof phone === "string"
+        ? phone.replace(/\D/g, "")
+        : "";
 
-      // Validate client details
       if (
         typeof fullName !== "string" ||
         typeof email !== "string" ||
-        typeof phone !== "string" ||
         fullName.trim().length < 2 ||
         fullName.trim().length > 100 ||
         email.trim().length > 255 ||
         !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
-        !/^[0-9+\s()-]{7,20}$/.test(phone.trim())
+        !/^\d{10}$/.test(normalizedPhone)
       ) {
         return res.status(400).json({
           success: false,
-          message: "Please provide valid client details.",
+          message: "Please provide a valid name, email address and 10-digit mobile number.",
         });
       }
 
       const normalizedEmail = email.trim().toLowerCase();
 
-      // Check for an existing account
-      const existingClient = await pool.query(
-        "SELECT id FROM clients WHERE LOWER(email) = $1",
-        [normalizedEmail]
+      const existing = await pool.query(
+        `SELECT id, email,
+                regexp_replace(phone, '[^0-9]', '', 'g') AS normalized_phone
+         FROM registered_users
+         WHERE LOWER(email) = $1
+            OR regexp_replace(phone, '[^0-9]', '', 'g') = $2`,
+        [normalizedEmail, normalizedPhone]
       );
 
-      if (existingClient.rowCount > 0) {
+      if (existing.rowCount > 0) {
+        const samePhone = existing.rows.some(
+          (row) => row.normalized_phone === normalizedPhone
+        );
         return res.status(409).json({
           success: false,
-          message: "A client with this email already exists.",
+          message: samePhone
+            ? "An account with this mobile number already exists. Please log in."
+            : "An account with this email already exists.",
         });
       }
 
-      // Generate a random temporary password
-      const temporaryPassword = crypto.randomBytes(12).toString("base64url");
+      // Keep the existing NOT NULL password_hash database column compatible.
+      // This random hash is never shown to or entered by the user.
+      const internalPassword = crypto.randomBytes(32).toString("base64url");
+      const passwordHash = await bcrypt.hash(internalPassword, 12);
 
-      // Hash the password before storing it
-      const passwordHash = await bcrypt.hash(temporaryPassword, 12);
-
-      // Create the client with an active account
       const result = await pool.query(
-        `INSERT INTO clients (
-          full_name,
-          email,
-          phone,
-          password_hash,
-          status
-        )
-        VALUES ($1, $2, $3, $4, 'active')
-        RETURNING id, full_name, email, phone, status, created_at`,
-        [
-          fullName.trim(),
-          normalizedEmail,
-          phone.trim(),
-          passwordHash,
-        ]
+        `INSERT INTO registered_users (
+           full_name, email, phone, password_hash
+         )
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, full_name, email, phone, status, created_at`,
+        [fullName.trim(), normalizedEmail, normalizedPhone, passwordHash]
       );
 
       return res.status(201).json({
         success: true,
-        message: "Client account created successfully.",
-        client: result.rows[0],
-        temporaryPassword,
+        message: "Registration successful. You can now log in using your mobile number.",
+        user: result.rows[0],
       });
-
     } catch (error) {
       if (error.code === "23505") {
         return res.status(409).json({
           success: false,
-          message: "A client with this email already exists.",
+          message: "An account with this email already exists.",
         });
       }
-
       next(error);
     }
   }
 );
 
 
-// Client login
+
+// Unified mobile login for public website users and gym clients.
+// Demo mode only: this flow does not verify ownership of the phone number.
+app.post("/api/auth/mobile-login", loginLimiter, async (req, res, next) => {
+  try {
+    const phone = typeof req.body?.phone === "string"
+      ? req.body.phone.replace(/\D/g, "")
+      : "";
+
+    if (!/^\d{10}$/.test(phone)) {
+      return res.status(400).json({
+        success: false,
+        message: "Please enter a valid 10-digit mobile number.",
+      });
+    }
+
+    const [usersResult, clientsResult] = await Promise.all([
+      pool.query(
+        `SELECT id, full_name, email, phone, status
+         FROM registered_users
+         WHERE regexp_replace(phone, '[^0-9]', '', 'g') = $1
+         ORDER BY id`,
+        [phone]
+      ),
+      pool.query(
+        `SELECT id, member_id::text AS member_id, full_name, email, phone, status
+         FROM clients
+         WHERE regexp_replace(phone, '[^0-9]', '', 'g') = $1
+         ORDER BY full_name ASC, id ASC`,
+        [phone]
+      ),
+    ]);
+
+    
+const activeClientAccounts = clientsResult.rows
+  .filter((client) => client.status === "active")
+  .map((client) => ({
+    type: "client",
+    id: client.id,
+    memberId: client.member_id,
+    fullName: client.full_name,
+    email: client.email,
+    phone: client.phone,
+    label: "Gym Membership",
+  }));
+
+const activeUserAccounts = usersResult.rows
+  .filter((user) => user.status === "active")
+  .map((user) => ({
+    type: "user",
+    id: user.id,
+    fullName: user.full_name,
+    email: user.email,
+    phone: user.phone,
+    label: "Website Account",
+  }));
+
+// Gym membership accounts take priority.
+// If gym client records exist, never show the public user account.
+const accounts = clientsResult.rows.length > 0
+  ? activeClientAccounts
+  : activeUserAccounts;
+
+    if (accounts.length === 0) {
+      const hasSuspended = [...usersResult.rows, ...clientsResult.rows].length > 0;
+      return res.status(hasSuspended ? 403 : 404).json({
+        success: false,
+        message: hasSuspended
+          ? "The account linked to this mobile number is suspended. Please contact the gym."
+          : "No account was found for this mobile number. Please register or contact the gym.",
+      });
+    }
+
+    // Keep the candidate list in the session until the user chooses an account.
+    req.session.regenerate((error) => {
+      if (error) return next(error);
+
+      req.session.pendingAuthPhone = phone;
+      req.session.pendingAuthAccounts = accounts.map(({ type, id }) => ({ type, id }));
+      req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+
+      req.session.save((saveError) => {
+        if (saveError) return next(saveError);
+
+        return res.json({
+          success: true,
+          requiresAccountSelection: true,
+          accounts,
+          csrfToken: req.session.csrfToken,
+          message: accounts.length === 1
+            ? "Account found. Continue to open it."
+            : "Multiple accounts found. Select the account you want to open.",
+        });
+      });
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post("/api/auth/select-account", async (req, res, next) => {
+  try {
+    const type = req.body?.type;
+    const id = Number(req.body?.id);
+    const phone = req.session?.pendingAuthPhone;
+    const allowed = req.session?.pendingAuthAccounts;
+
+    if (
+      !["user", "client"].includes(type) ||
+      !Number.isSafeInteger(id) ||
+      !Array.isArray(allowed) ||
+      !allowed.some(
+  (item) =>
+    item.type === type &&
+    String(item.id) === String(id)
+)||
+      typeof phone !== "string"
+    ) {
+      return res.status(401).json({
+        success: false,
+        message: "Your login session has expired. Enter your mobile number again.",
+      });
+    }
+
+    const table = type === "user" ? "registered_users" : "clients";
+    const result = await pool.query(
+      `SELECT id, full_name, email, phone, status
+       ${type === "client" ? ", member_id::text AS member_id" : ""}
+       FROM ${table}
+       WHERE id = $1
+         AND regexp_replace(phone, '[^0-9]', '', 'g') = $2`,
+      [id, phone]
+    );
+
+    if (result.rowCount === 0 || result.rows[0].status !== "active") {
+      return res.status(403).json({
+        success: false,
+        message: "This account is unavailable or suspended.",
+      });
+    }
+
+    const account = result.rows[0];
+
+    // Regenerate again after selection and create one clean authenticated session.
+    req.session.regenerate((error) => {
+      if (error) return next(error);
+
+      req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+
+      if (type === "user") {
+        req.session.registeredUserId = account.id;
+        req.session.registeredUserName = account.full_name;
+      } else {
+        req.session.clientId = account.id;
+        req.session.clientName = account.full_name;
+      }
+
+      req.session.save((saveError) => {
+        if (saveError) return next(saveError);
+
+        return res.json({
+          success: true,
+          accountType: type,
+          redirectTo: type === "user" ? "/user/dashboard" : "/client/dashboard",
+          account: {
+            id: account.id,
+            fullName: account.full_name,
+            email: account.email,
+            phone: account.phone,
+            ...(type === "client" ? { memberId: account.member_id } : {}),
+          },
+          csrfToken: req.session.csrfToken,
+          message: "Login successful.",
+        });
+      });
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+
+// Public user login by mobile number (no OTP/password in this prototype).
 app.post(
-  "/api/client/login",
+  "/api/user/login",
   loginLimiter,
   async (req, res, next) => {
     try {
-      const { email, password } = req.body || {};
+      const { phone } = req.body || {};
+      const normalizedPhone = typeof phone === "string"
+        ? phone.replace(/\D/g, "")
+        : "";
 
-      if (
-        typeof email !== "string" ||
-        typeof password !== "string" ||
-        !email.trim() ||
-        !password
-      ) {
+      if (!/^\d{10}$/.test(normalizedPhone)) {
         return res.status(400).json({
           success: false,
-          message: "Please enter your email and password.",
+          message: "Please enter a valid 10-digit mobile number.",
         });
       }
-
-      const normalizedEmail = email.trim().toLowerCase();
 
       const result = await pool.query(
-        `SELECT id, full_name, email, phone, password_hash, status
-         FROM clients
-         WHERE LOWER(email) = $1`,
-        [normalizedEmail]
+        `SELECT id, full_name, email, phone, status
+         FROM registered_users
+         WHERE regexp_replace(phone, '[^0-9]', '', 'g') = $1
+         ORDER BY id`,
+        [normalizedPhone]
       );
 
-      const client = result.rows[0];
-
-      if (!client || !(await bcrypt.compare(password, client.password_hash))) {
+      if (result.rowCount === 0) {
         return res.status(401).json({
           success: false,
-          message: "Invalid email or password.",
+          message: "No public account was found for this mobile number. Please register first.",
         });
       }
 
-      if (client.status !== "active") {
+      if (result.rowCount > 1) {
+        return res.status(409).json({
+          success: false,
+          message: "More than one public account uses this mobile number. Please contact the gym.",
+        });
+      }
+
+      const user = result.rows[0];
+
+      if (user.status !== "active") {
         return res.status(403).json({
           success: false,
-          message: "Your account is currently suspended. Please contact the gym owner.",
+          message: "Your account is suspended.",
         });
       }
 
-      // Regenerate the session after successful authentication
       req.session.regenerate((error) => {
-        if (error) {
-          return next(error);
-        }
+        if (error) return next(error);
 
-        req.session.clientId = client.id;
-        req.session.clientName = client.full_name;
+        req.session.registeredUserId = user.id;
+        req.session.registeredUserName = user.full_name;
         req.session.csrfToken = crypto.randomBytes(32).toString("hex");
 
         req.session.save((saveError) => {
-          if (saveError) {
-            return next(saveError);
-          }
-
+          if (saveError) return next(saveError);
           return res.json({
             success: true,
-            message: "Client login successful.",
-            client: {
-              id: client.id,
-              fullName: client.full_name,
-              email: client.email,
-              phone: client.phone,
+            message: "Login successful.",
+            user: {
+              id: user.id,
+              fullName: user.full_name,
+              email: user.email,
+              phone: user.phone,
             },
             csrfToken: req.session.csrfToken,
           });
@@ -498,11 +599,630 @@ app.post(
   }
 );
 
-// Get logged-in client profile
+// Get logged-in public user profile
+app.get(
+  "/api/user/me",
+  requireRegisteredUser,
+  async (req, res, next) => {
+    try {
+      const result = await pool.query(
+        `SELECT id, full_name, email, phone, status, created_at
+         FROM registered_users
+         WHERE id = $1`,
+        [req.session.registeredUserId]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "User account not found.",
+        });
+      }
+
+      return res.json({
+        success: true,
+        user: result.rows[0],
+        csrfToken: req.session.csrfToken,
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Update public user profile
+app.patch(
+  "/api/user/profile",
+  requireRegisteredUser,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const { fullName, phone } = req.body || {};
+
+      if (
+        typeof fullName !== "string" ||
+        typeof phone !== "string" ||
+        fullName.trim().length < 2 ||
+        fullName.trim().length > 100 ||
+        !/^[0-9+\s()-]{7,20}$/.test(phone.trim())
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid profile details.",
+        });
+      }
+
+      const result = await pool.query(
+        `UPDATE registered_users
+         SET full_name = $1,
+             phone = $2,
+             updated_at = NOW()
+         WHERE id = $3
+         RETURNING id, full_name, email, phone, status, created_at`,
+        [
+          fullName.trim(),
+          phone.trim(),
+          req.session.registeredUserId,
+        ]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "User account not found.",
+        });
+      }
+
+      req.session.registeredUserName = result.rows[0].full_name;
+
+      return res.json({
+        success: true,
+        message: "Profile updated successfully.",
+        user: result.rows[0],
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Submit enquiry from a logged-in public user
+app.post(
+  "/api/user/enquiries",
+  requireRegisteredUser,
+  requireCsrf,
+  enquiryLimiter,
+  async (req, res, next) => {
+    try {
+      const { membershipPlanId, message = "" } = req.body || {};
+
+      if (
+        !Number.isSafeInteger(Number(membershipPlanId)) ||
+        Number(membershipPlanId) < 1 ||
+        typeof message !== "string" ||
+        message.length > 1000
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid enquiry details.",
+        });
+      }
+
+      const planResult = await pool.query(
+        `SELECT id, name
+         FROM membership_plans
+         WHERE id = $1 AND is_active = TRUE`,
+        [Number(membershipPlanId)]
+      );
+
+      if (planResult.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Selected membership plan is unavailable.",
+        });
+      }
+
+      const plan = planResult.rows[0];
+
+      const result = await pool.query(
+        `INSERT INTO registered_user_enquiries (
+           user_id,
+           membership_plan_id,
+           plan_name,
+           message
+         )
+         VALUES ($1, $2, $3, $4)
+         RETURNING id, membership_plan_id, plan_name,
+                   message, status, created_at`,
+        [
+          req.session.registeredUserId,
+          plan.id,
+          plan.name,
+          message.trim(),
+        ]
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Your membership enquiry was submitted successfully.",
+        enquiry: result.rows[0],
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Get only the logged-in user's enquiry history
+app.get(
+  "/api/user/enquiries",
+  requireRegisteredUser,
+  async (req, res, next) => {
+    try {
+      const result = await pool.query(
+        `SELECT id, membership_plan_id, plan_name,
+                message, status, created_at
+         FROM registered_user_enquiries
+         WHERE user_id = $1
+         ORDER BY created_at DESC, id DESC`,
+        [req.session.registeredUserId]
+      );
+
+      return res.json({
+        success: true,
+        enquiries: result.rows,
+      });
+
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Public user logout
+app.post(
+  "/api/user/logout",
+  requireRegisteredUser,
+  requireCsrf,
+  (req, res, next) => {
+    req.session.destroy((error) => {
+      if (error) return next(error);
+
+      res.clearCookie("sylas.sid", {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+      });
+
+      return res.json({
+        success: true,
+        message: "Logged out successfully.",
+      });
+    });
+  }
+);
+
+
+// Public client registration is permanently disabled.
+// Only the authenticated gym owner can create client accounts.
+app.post("/api/client/register", (req, res) => {
+  return res.status(403).json({
+    success: false,
+    message: "Public registration is disabled. Please contact the gym owner.",
+  });
+});
+
+
+
+// Owner creates a new client account
+
+app.post(
+  "/api/owner/clients",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    const {
+      fullName,
+      email,
+      phone,
+      membershipPlanId,
+      amountPaid = 0,
+      paymentMethod,
+      startDate,
+      expiryDate,
+    } = req.body || {};
+
+    function isValidDate(value) {
+      if (
+        typeof value !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(value)
+      ) {
+        return false;
+      }
+
+      const date = new Date(`${value}T00:00:00.000Z`);
+
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+      );
+    }
+
+    // Validate client details.
+    if (
+      typeof fullName !== "string" ||
+      typeof email !== "string" ||
+      typeof phone !== "string" ||
+      fullName.trim().length < 2 ||
+      fullName.trim().length > 100 ||
+      email.trim().length > 255 ||
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
+      !/^[0-9+\s()-]{7,20}$/.test(phone.trim())
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide valid client details.",
+      });
+    }
+
+    // Validate membership and payment details.
+    if (
+      !Number.isSafeInteger(Number(membershipPlanId)) ||
+      Number(membershipPlanId) < 1 ||
+      typeof amountPaid !== "number" ||
+      !Number.isFinite(amountPaid) ||
+      amountPaid < 0 ||
+      !["cash", "upi", "other"].includes(paymentMethod) ||
+      !isValidDate(startDate) ||
+      !isValidDate(expiryDate) ||
+      expiryDate < startDate
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide valid membership, date and payment details.",
+      });
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+
+    // Generate a temporary password.
+    const temporaryPassword = crypto.randomBytes(12).toString("base64url");
+
+    let passwordHash;
+
+    try {
+      passwordHash = await bcrypt.hash(temporaryPassword, 12);
+    } catch (error) {
+      return next(error);
+    }
+
+    const dbClient = await pool.connect();
+    let transactionStarted = false;
+
+    try {
+      await dbClient.query("BEGIN");
+      transactionStarted = true;
+
+      // Check whether the email already exists.
+      const existingClient = await dbClient.query(
+        "SELECT id FROM clients WHERE LOWER(email) = $1",
+        [normalizedEmail]
+      );
+
+      if (existingClient.rowCount > 0) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(409).json({
+          success: false,
+          message: "A client with this email already exists.",
+        });
+      }
+
+      // Get the selected active membership plan.
+      const planResult = await dbClient.query(
+        `SELECT id, name, price, duration_months
+         FROM membership_plans
+         WHERE id = $1 AND is_active = TRUE`,
+        [Number(membershipPlanId)]
+      );
+
+      if (planResult.rowCount === 0) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(404).json({
+          success: false,
+          message: "Membership plan not found or inactive.",
+        });
+      }
+
+      const plan = planResult.rows[0];
+      const planPrice = Number(plan.price);
+
+      if (amountPaid > planPrice) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(400).json({
+          success: false,
+          message: "Amount paid cannot exceed the plan price.",
+        });
+      }
+
+      // Calculate membership status using the database date.
+      const statusResult = await dbClient.query(
+        `SELECT
+           CASE
+             WHEN $1::date < CURRENT_DATE THEN 'expired'
+             ELSE 'active'
+           END AS membership_status`,
+        [expiryDate]
+      );
+
+      const membershipStatus =
+        statusResult.rows[0].membership_status;
+
+      const paymentStatus =
+        amountPaid >= planPrice ? "paid" : "pending";
+
+      // Create the client account.
+      const clientResult = await dbClient.query(
+        `INSERT INTO clients (
+           full_name,
+           email,
+           phone,
+           password_hash,
+           status
+         )
+         VALUES ($1, $2, $3, $4, 'active')
+         RETURNING id, full_name, email, phone, status, created_at`,
+        [
+          fullName.trim(),
+          normalizedEmail,
+          phone.trim(),
+          passwordHash,
+        ]
+      );
+
+      const client = clientResult.rows[0];
+
+      // Generate a permanent Member ID.
+      const memberResult = await dbClient.query(
+        `UPDATE clients
+         SET member_id = nextval('gym_member_id_seq')
+         WHERE id = $1
+         RETURNING member_id::text AS member_id`,
+        [client.id]
+      );
+
+      if (memberResult.rowCount === 0) {
+        throw new Error("Unable to generate the client Member ID.");
+      }
+
+      const memberId = memberResult.rows[0].member_id;
+
+      // Assign the membership and save payment details.
+      const membershipResult = await dbClient.query(
+        `INSERT INTO client_memberships (
+           client_id,
+           membership_plan_id,
+           plan_name,
+           price,
+           duration_months,
+           start_date,
+           expiry_date,
+           status,
+           payment_status,
+           amount_paid,
+           payment_method
+         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+         RETURNING *`,
+        [
+          client.id,
+          plan.id,
+          plan.name,
+          plan.price,
+          plan.duration_months,
+          startDate,
+          expiryDate,
+          membershipStatus,
+          paymentStatus,
+          amountPaid,
+          paymentMethod,
+        ]
+      );
+
+      // Return the permanent Member ID with the client.
+      client.member_id = memberId;
+
+      // Commit both operations together.
+      await dbClient.query("COMMIT");
+      transactionStarted = false;
+
+      return res.status(201).json({
+        success: true,
+        message: "Client created and membership assigned successfully.",
+        client,
+        memberId,
+        temporaryPassword,
+        membership: membershipResult.rows[0],
+      });
+
+    } catch (error) {
+      if (transactionStarted) {
+        await dbClient.query("ROLLBACK");
+      }
+
+      if (error.code === "23505") {
+        return res.status(409).json({
+          success: false,
+          message: "A client with this email already exists.",
+        });
+      }
+
+      next(error);
+    } finally {
+      dbClient.release();
+    }
+  }
+);
+
+
+
+
+// Gym client login by mobile number.
+// A temporary pending session is created so account selection is tied to this login attempt.
+app.post(
+  "/api/client/login",
+  loginLimiter,
+  async (req, res, next) => {
+    try {
+      const { phone } = req.body || {};
+      const normalizedPhone = typeof phone === "string"
+        ? phone.replace(/\D/g, "")
+        : "";
+
+      if (!/^\d{10}$/.test(normalizedPhone)) {
+        return res.status(400).json({
+          success: false,
+          message: "Please enter a valid 10-digit mobile number.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT id, member_id::text AS member_id, full_name, email, phone, status
+         FROM clients
+         WHERE regexp_replace(phone, '[^0-9]', '', 'g') = $1
+         ORDER BY full_name ASC, id ASC`,
+        [normalizedPhone]
+      );
+
+      if (result.rowCount === 0) {
+        return res.status(401).json({
+          success: false,
+          message: "No gym membership account was found for this mobile number.",
+        });
+      }
+
+      const activeClients = result.rows.filter((client) => client.status === "active");
+
+      if (activeClients.length === 0) {
+        return res.status(403).json({
+          success: false,
+          message: "All accounts linked to this mobile number are suspended. Please contact the gym.",
+        });
+      }
+
+      req.session.regenerate((error) => {
+        if (error) return next(error);
+
+        req.session.pendingClientIds = activeClients.map((client) => client.id);
+        req.session.pendingClientPhone = normalizedPhone;
+        req.session.csrfToken = crypto.randomBytes(32).toString("hex");
+
+        req.session.save((saveError) => {
+          if (saveError) return next(saveError);
+
+          return res.json({
+            success: true,
+            requiresAccountSelection: activeClients.length > 1,
+            message: activeClients.length > 1
+              ? "Select the membership account you want to open."
+              : "Mobile number found.",
+            accounts: activeClients.map((client) => ({
+              id: client.id,
+              memberId: client.member_id,
+              fullName: client.full_name,
+              phone: client.phone,
+              status: client.status,
+            })),
+            csrfToken: req.session.csrfToken,
+          });
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
+// Select one gym membership account from the accounts returned for this mobile login.
+app.post(
+  "/api/client/select-account",
+  async (req, res, next) => {
+    try {
+      const clientId = Number(req.body?.clientId);
+      const allowedIds = req.session?.pendingClientIds;
+
+      if (
+        !Array.isArray(allowedIds) ||
+        !Number.isSafeInteger(clientId) ||
+        !allowedIds.includes(clientId)
+      ) {
+        return res.status(401).json({
+          success: false,
+          message: "Your account selection session has expired. Please enter your mobile number again.",
+        });
+      }
+
+      const result = await pool.query(
+        `SELECT id, member_id::text AS member_id, full_name, email, phone, status
+         FROM clients
+         WHERE id = $1
+           AND regexp_replace(phone, '[^0-9]', '', 'g') = $2`,
+        [clientId, req.session.pendingClientPhone]
+      );
+
+      if (result.rowCount === 0 || result.rows[0].status !== "active") {
+        return res.status(403).json({
+          success: false,
+          message: "This membership account is unavailable or suspended.",
+        });
+      }
+
+      const client = result.rows[0];
+      req.session.clientId = client.id;
+      req.session.clientName = client.full_name;
+      delete req.session.pendingClientIds;
+      delete req.session.pendingClientPhone;
+
+      req.session.save((saveError) => {
+        if (saveError) return next(saveError);
+        return res.json({
+          success: true,
+          message: "Client account selected successfully.",
+          client: {
+            id: client.id,
+            memberId: client.member_id,
+            fullName: client.full_name,
+            email: client.email,
+            phone: client.phone,
+          },
+          csrfToken: req.session.csrfToken,
+        });
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+// Get logged-in client profile and membership details for the client dashboard.
 app.get("/api/client/me", requireClient, async (req, res, next) => {
   try {
     const result = await pool.query(
-      `SELECT id, full_name, email, phone, status, created_at
+      `SELECT id, member_id::text AS member_id,
+              full_name, email, phone, status, created_at
        FROM clients
        WHERE id = $1`,
       [req.session.clientId]
@@ -515,15 +1235,49 @@ app.get("/api/client/me", requireClient, async (req, res, next) => {
       });
     }
 
+    const membershipResult = await pool.query(
+      `SELECT id, plan_name, price, duration_months,
+              start_date, expiry_date, status,
+              payment_status, amount_paid, payment_method
+       FROM client_memberships
+       WHERE client_id = $1
+       ORDER BY start_date DESC, id DESC`,
+      [req.session.clientId]
+    );
+
     return res.json({
       success: true,
       client: result.rows[0],
+      memberships: membershipResult.rows,
       csrfToken: req.session.csrfToken,
     });
   } catch (error) {
     next(error);
   }
 });
+
+// Log out the currently authenticated gym client.
+app.post(
+  "/api/client/logout",
+  requireClient,
+  requireCsrf,
+  (req, res, next) => {
+    req.session.destroy((error) => {
+      if (error) return next(error);
+
+      res.clearCookie("sylas.sid", {
+        httpOnly: true,
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
+      });
+
+      return res.json({
+        success: true,
+        message: "Logged out successfully.",
+      });
+    });
+  }
+);
 
 
 // Owner API: list and search registered clients
@@ -1969,6 +2723,7 @@ app.post("/api/enquiries", enquiryLimiter, async (req, res, next) => {
 
 // Only logged-in owners can view enquiries
 
+
 app.get("/api/enquiries", requireOwner, async (req, res, next) => {
   try {
     const search = String(req.query.search || "").trim().slice(0, 100);
@@ -1999,13 +2754,15 @@ app.get("/api/enquiries", requireOwner, async (req, res, next) => {
       });
     }
 
-    const conditions = [];
     const params = [];
+    const conditions = [];
 
     if (search) {
       params.push(`%${search}%`);
       conditions.push(
-        `(name ILIKE $${params.length} OR phone ILIKE $${params.length})`
+        `(name ILIKE $${params.length}
+          OR phone ILIKE $${params.length}
+          OR email ILIKE $${params.length})`
       );
     }
 
@@ -2018,16 +2775,49 @@ app.get("/api/enquiries", requireOwner, async (req, res, next) => {
       ? `WHERE ${conditions.join(" AND ")}`
       : "";
 
+    const allEnquiries = `
+      SELECT
+  id,
+  name,
+  NULL::text AS email,
+  phone,
+  membership,
+  message,
+  status,
+  created_at,
+  'website'::text AS source
+FROM enquiries
+
+      UNION ALL
+
+      SELECT
+        -rue.id AS id,
+        ru.full_name AS name,
+        ru.email AS email,
+        ru.phone AS phone,
+        COALESCE(rue.plan_name, 'Membership Enquiry') AS membership,
+        rue.message,
+        rue.status,
+        rue.created_at,
+        'registered_user'::text AS source
+      FROM registered_user_enquiries rue
+      JOIN registered_users ru
+        ON ru.id = rue.user_id
+    `;
+
     const countResult = await pool.query(
-      `SELECT COUNT(*)::int AS total
-       FROM enquiries ${whereClause}`,
+      `
+      WITH all_enquiries AS (${allEnquiries})
+      SELECT COUNT(*)::int AS total
+      FROM all_enquiries
+      ${whereClause}
+      `,
       params
     );
 
     const total = countResult.rows[0].total;
     const totalPages = Math.ceil(total / limit);
 
-    // Return an empty page if a filter change leaves the requested page out of range.
     if (total > 0 && page > totalPages) {
       return res.json({
         success: true,
@@ -2039,25 +2829,30 @@ app.get("/api/enquiries", requireOwner, async (req, res, next) => {
     const dataParams = [...params, limit, offset];
 
     const enquiryResult = await pool.query(
-      `SELECT id, name, phone, membership, message, status, created_at
-       FROM enquiries
-       ${whereClause}
-       ORDER BY created_at DESC, id DESC
-       LIMIT $${dataParams.length - 1}
-       OFFSET $${dataParams.length}`,
+      `
+      WITH all_enquiries AS (${allEnquiries})
+      SELECT *
+      FROM all_enquiries
+      ${whereClause}
+      ORDER BY created_at DESC, id DESC
+      LIMIT $${dataParams.length - 1}
+      OFFSET $${dataParams.length}
+      `,
       dataParams
     );
 
-    // Counts across all enquiries, independent of the current filter/page.
-    const statsResult = await pool.query(`
+    const statsResult = await pool.query(
+      `
+      WITH all_enquiries AS (${allEnquiries})
       SELECT
         COUNT(*)::int AS total,
         COUNT(*) FILTER (WHERE status = 'new')::int AS new,
         COUNT(*) FILTER (WHERE status = 'contacted')::int AS contacted,
         COUNT(*) FILTER (WHERE status = 'converted')::int AS converted,
         COUNT(*) FILTER (WHERE status = 'closed')::int AS closed
-      FROM enquiries
-    `);
+      FROM all_enquiries
+      `
+    );
 
     return res.json({
       success: true,
@@ -2065,6 +2860,7 @@ app.get("/api/enquiries", requireOwner, async (req, res, next) => {
       pagination: { page, limit, total, totalPages },
       stats: statsResult.rows[0],
     });
+
   } catch (error) {
     next(error);
   }
@@ -2072,56 +2868,84 @@ app.get("/api/enquiries", requireOwner, async (req, res, next) => {
 
 
 
-app.patch("/api/enquiries/:id/status", requireOwner, requireCsrf, async (req, res, next) => {
-  try {
-    const id = Number(req.params.id);
-    const { status } = req.body;
 
-    const allowedStatuses = [
-      "new",
-      "contacted",
-      "converted",
-      "closed",
-    ];
 
-    if (!Number.isSafeInteger(id) || id < 1) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid enquiry ID.",
+app.patch(
+  "/api/enquiries/:id/status",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const id = Number(req.params.id);
+      const { status } = req.body;
+
+      const allowedStatuses = [
+        "new",
+        "contacted",
+        "converted",
+        "closed",
+      ];
+
+      if (!Number.isSafeInteger(id) || id === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid enquiry ID.",
+        });
+      }
+
+      if (!allowedStatuses.includes(status)) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid enquiry status.",
+        });
+      }
+
+      let result;
+
+      if (id < 0) {
+        // Registered website user enquiry
+        result = await pool.query(
+          `
+          UPDATE registered_user_enquiries
+          SET status = $1,
+              updated_at = NOW()
+          WHERE id = $2
+          RETURNING id, plan_name, message, status, created_at
+          `,
+          [status, Math.abs(id)]
+        );
+      } else {
+        // Existing public website enquiry
+        result = await pool.query(
+          `
+          UPDATE enquiries
+          SET status = $1
+          WHERE id = $2
+          RETURNING id, name, phone, membership, status, created_at
+          `,
+          [status, id]
+        );
+      }
+
+      if (result.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Enquiry not found.",
+        });
+      }
+
+      return res.json({
+        success: true,
+        message: "Enquiry status updated successfully.",
+        enquiry: result.rows[0],
       });
+
+    } catch (error) {
+      next(error);
     }
-
-    if (!allowedStatuses.includes(status)) {
-      return res.status(400).json({
-        success: false,
-        message: "Invalid enquiry status.",
-      });
-    }
-
-    const result = await pool.query(
-      `UPDATE enquiries
-       SET status = $1
-       WHERE id = $2
-       RETURNING id, name, phone, membership, status, created_at`,
-      [status, id]
-    );
-
-    if (result.rowCount === 0) {
-      return res.status(404).json({
-        success: false,
-        message: "Enquiry not found.",
-      });
-    }
-
-    return res.json({
-      success: true,
-      message: "Enquiry status updated successfully.",
-      enquiry: result.rows[0],
-    });
-  } catch (error) {
-    next(error);
   }
-});
+);
+
 
 
 // Central error handler

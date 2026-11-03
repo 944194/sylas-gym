@@ -228,54 +228,121 @@ export default function ClientManagement({ csrfToken, enquiry }) {
     }));
   }
 
-  async function handleCreateClient(event) {
-    event.preventDefault();
-    setCreating(true);
-    setError('');
-    setMessage('');
-    setTemporaryPassword('');
 
-    try {
-      const response = await fetch(`${API_URL}/api/owner/clients`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRF-Token': csrfToken,
-        },
-        body: JSON.stringify(createForm),
-      });
+async function handleCreateClient(event) {
+  event.preventDefault();
 
-      const result = await response.json();
+  const {
+    membershipPlanId,
+    startDate,
+    expiryDate,
+    amountPaid,
+    paymentMethod,
+  } = membershipForm;
 
-      if (!response.ok || !result.success) {
-        throw new Error(result.message || 'Unable to create client.');
-      }
+  const selectedPlan = plans.find(
+    (plan) => String(plan.id) === String(membershipPlanId)
+  );
 
-      setTemporaryPassword(result.temporaryPassword);
-      setMessage('Client account created successfully.');
-
-      setCreateForm({
-        fullName: '',
-        email: '',
-        phone: '',
-      });
-
-      setShowCreateForm(false);
-
-      await loadData();
-
-      if (result.client) {
-        selectClient(result.client);
-      }
-
-      setTemporaryPassword(result.temporaryPassword);
-    } catch (err) {
-      setError(err.message || 'Unable to create client.');
-    } finally {
-      setCreating(false);
-    }
+  if (!selectedPlan) {
+    setError('Please select a membership plan.');
+    return;
   }
+
+  if (!startDate || !expiryDate || expiryDate < startDate) {
+    setError('Please select valid membership dates.');
+    return;
+  }
+
+  const numericAmount = Number(amountPaid);
+
+  if (
+    amountPaid === '' ||
+    !Number.isFinite(numericAmount) ||
+    numericAmount < 0 ||
+    numericAmount > Number(selectedPlan.price)
+  ) {
+    setError('Please enter a valid payment amount.');
+    return;
+  }
+
+  if (!['cash', 'upi', 'other'].includes(paymentMethod)) {
+    setError('Please select a payment method.');
+    return;
+  }
+
+  setCreating(true);
+  setError('');
+  setMessage('');
+  setTemporaryPassword('');
+
+  try {
+    const response = await fetch(`${API_URL}/api/owner/clients`, {
+      method: 'POST',
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-Token': csrfToken,
+      },
+      body: JSON.stringify({
+        ...createForm,
+        membershipPlanId: Number(membershipPlanId),
+        startDate,
+        expiryDate,
+        amountPaid: numericAmount,
+        paymentMethod,
+      }),
+    });
+
+    const result = await response.json();
+
+    if (!response.ok || !result.success) {
+      throw new Error(
+        result.message || 'Unable to create client and membership.'
+      );
+    }
+
+    setTemporaryPassword(result.temporaryPassword || '');
+    setMessage(
+      `Client created and membership assigned successfully. Member ID: ${result.memberId}`
+    );
+
+    setCreateForm({
+      fullName: '',
+      email: '',
+      phone: '',
+    });
+
+    setShowCreateForm(false);
+
+    const refreshedClients = await loadData();
+
+    if (result.client) {
+      const newClient =
+        refreshedClients.find(
+          (client) => client.id === result.client.id
+        ) || result.client;
+
+      setSelectedClient(newClient);
+      await loadMembershipHistory(newClient.id);
+    }
+
+    setMembershipForm({
+      membershipPlanId: '',
+      startDate: getToday(),
+      expiryDate: '',
+      amountPaid: '',
+      paymentMethod: '',
+    });
+  } catch (err) {
+    setError(
+      err.message || 'Unable to create client and membership.'
+    );
+  } finally {
+    setCreating(false);
+  }
+}
+
 
   function resetMembershipForm() {
     setEditingMembershipId(null);
@@ -614,13 +681,110 @@ useEffect(() => {
             is created.
           </p>
 
+          
+<h4>Membership details</h4>
+
+<div className="client-form-grid">
+  <label>
+    Membership plan
+    <select
+      value={membershipForm.membershipPlanId}
+      required
+      onChange={(event) =>
+        handlePlanChange(event.target.value)
+      }
+    >
+      <option value="">Select a membership plan</option>
+
+      {plans.map((plan) => (
+        <option key={plan.id} value={plan.id}>
+          {plan.name} — {formatCurrency(plan.price)} (
+          {plan.duration_months} months)
+        </option>
+      ))}
+    </select>
+  </label>
+
+  <label>
+    Start date
+    <input
+      type="date"
+      value={membershipForm.startDate}
+      required
+      onChange={(event) =>
+        handleStartDateChange(event.target.value)
+      }
+    />
+  </label>
+
+  <label>
+    Expiry date
+    <input
+      type="date"
+      value={membershipForm.expiryDate}
+      min={membershipForm.startDate}
+      required
+      onChange={(event) =>
+        setMembershipForm((current) => ({
+          ...current,
+          expiryDate: event.target.value,
+        }))
+      }
+    />
+  </label>
+
+  <label>
+    Amount paid (₹)
+    <input
+      type="number"
+      min="0"
+      step="0.01"
+      value={membershipForm.amountPaid}
+      required
+      onChange={(event) =>
+        setMembershipForm((current) => ({
+          ...current,
+          amountPaid: event.target.value,
+        }))
+      }
+    />
+  </label>
+
+  <label>
+    Payment method
+    <select
+      value={membershipForm.paymentMethod}
+      required
+      onChange={(event) =>
+        setMembershipForm((current) => ({
+          ...current,
+          paymentMethod: event.target.value,
+        }))
+      }
+    >
+      <option value="">Select payment method</option>
+      <option value="cash">Cash</option>
+      <option value="upi">UPI</option>
+      <option value="other">Other</option>
+    </select>
+  </label>
+</div>
+
+<p className="client-form-note">
+  A temporary password and permanent Member ID will be generated
+  when the client and membership are created successfully.
+</p>
+
+
           <button
             type="submit"
             className="client-assign-button"
             disabled={creating}
           >
             <UserPlus size={16} />
-            {creating ? 'CREATING...' : 'CREATE CLIENT ACCOUNT'}
+            {creating
+  ? 'CREATING CLIENT...'
+  : 'CREATE CLIENT & ASSIGN MEMBERSHIP'}
           </button>
         </form>
       )}

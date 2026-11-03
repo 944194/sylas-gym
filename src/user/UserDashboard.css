@@ -1,0 +1,528 @@
+
+.user-dashboard {
+  min-height: 100vh;
+  display: flex;
+  background: #101010;
+  color: #f5f5f5;
+  font-family: inherit;
+}
+
+.user-sidebar {
+  width: 260px;
+  flex-shrink: 0;
+  background: #181818;
+  border-right: 1px solid #303030;
+  padding: 30px 20px;
+  display: flex;
+  flex-direction: column;
+}
+
+.user-brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #ff9d00;
+  font-size: 23px;
+  font-weight: 900;
+  letter-spacing: 2px;
+  margin-bottom: 45px;
+}
+
+.user-sidebar-profile {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 25px;
+  border-bottom: 1px solid #333;
+}
+
+.user-avatar {
+  width: 43px;
+  height: 43px;
+  border-radius: 50%;
+  background: #ff9d00;
+  color: #111;
+  display: grid;
+  place-items: center;
+  font-size: 19px;
+  font-weight: 900;
+}
+
+.user-sidebar-profile strong,
+.user-sidebar-profile small {
+  display: block;
+}
+
+.user-sidebar-profile strong {
+  font-size: 14px;
+}
+
+.user-sidebar-profile small {
+  color: #999;
+  margin-top: 5px;
+}
+
+.user-navigation {
+  display: grid;
+  gap: 10px;
+  margin-top: 30px;
+}
+
+.user-navigation button,
+.user-logout {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 13px;
+  padding: 14px;
+  color: #bbb;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.user-navigation button:hover,
+.user-navigation button.active {
+  background: #29231a;
+  color: #ff9d00;
+}
+
+.user-logout {
+  margin-top: auto;
+  color: #ff7777;
+}
+
+.user-logout:hover {
+  background: #301b1b;
+}
+
+.user-main {
+  flex: 1;
+  min-width: 0;
+  padding: 35px;
+  overflow-x: hidden;
+}
+
+.user-topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+.user-topbar p,
+.user-welcome > div > p,
+.user-kicker {
+  color: #ff9d00;
+  font-size: 11px;
+  letter-spacing: 2px;
+  font-weight: 800;
+}
+
+.user-topbar h1 {
+  font-size: 32px;
+  margin: 8px 0 0;
+}
+
+.user-refresh {
+  padding: 12px;
+  background: #222;
+  border: 1px solid #383838;
+  border-radius: 8px;
+  color: #ff9d00;
+  cursor: pointer;
+}
+
+.user-welcome {
+  min-height: 190px;
+  padding: 32px;
+  border-radius: 14px;
+  background: linear-gradient(110deg, #282019, #191919);
+  border: 1px solid #49351b;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.user-welcome h2 {
+  font-size: 28px;
+  margin: 12px 0;
+}
+
+.user-welcome span {
+  color: #aaa;
+}
+
+.user-welcome > svg {
+  color: #ff9d00;
+  opacity: 0.8;
+}
+
+.user-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 18px;
+  margin: 25px 0;
+}
+
+.user-stat-card,
+.user-content-card,
+.user-plan-card {
+  background: #191919;
+  border: 1px solid #303030;
+  border-radius: 12px;
+  padding: 25px;
+}
+
+.user-stat-card > svg {
+  color: #ff9d00;
+}
+
+.user-stat-card h2 {
+  font-size: 27px;
+  margin: 14px 0 5px;
+  text-transform: capitalize;
+}
+
+.user-stat-card p,
+.user-content-card > p,
+.user-section-heading p {
+  color: #999;
+  font-size: 14px;
+}
+
+.user-content-card {
+  margin-bottom: 22px;
+}
+
+.user-content-card h2 {
+  margin-top: 0;
+}
+
+.user-primary-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  background: #ff9d00;
+  color: #111;
+  border: none;
+  padding: 13px 18px;
+  border-radius: 7px;
+  font-weight: 900;
+  cursor: pointer;
+  margin-top: 15px;
+}
+
+.user-primary-button:hover {
+  background: #ffb52e;
+}
+
+.user-primary-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.user-profile-form {
+  display: grid;
+  gap: 12px;
+  max-width: 550px;
+  margin-top: 25px;
+}
+
+.user-profile-form label,
+.user-modal label {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.user-profile-form input,
+.user-modal textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid #414141;
+  border-radius: 7px;
+  background: #101010;
+  color: white;
+  font: inherit;
+  margin-bottom: 12px;
+}
+
+.user-profile-form input:focus,
+.user-modal textarea:focus {
+  outline: 1px solid #ff9d00;
+  border-color: #ff9d00;
+}
+
+.user-profile-form input:disabled {
+  color: #888;
+  cursor: not-allowed;
+}
+
+.user-plans-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 20px;
+  margin-top: 25px;
+}
+
+.user-plan-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.user-plan-icon {
+  color: #ff9d00;
+}
+
+.user-plan-price {
+  font-size: 32px;
+  font-weight: 900;
+  color: #ff9d00;
+  margin-top: 10px;
+}
+
+.user-plan-card > p {
+  color: #999;
+  font-size: 14px;
+}
+
+.user-plan-description {
+  min-height: 35px;
+}
+
+.user-plan-card ul {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 12px;
+  flex: 1;
+}
+
+.user-plan-card li {
+  display: flex;
+  gap: 9px;
+  align-items: center;
+  font-size: 13px;
+  color: #ccc;
+}
+
+.user-plan-card li svg {
+  color: #ff9d00;
+  flex-shrink: 0;
+}
+
+.user-plan-card .user-primary-button {
+  width: 100%;
+}
+
+.user-enquiry-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 25px;
+}
+
+.user-enquiry-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 15px;
+  background: #222;
+  border: 1px solid #383838;
+  padding: 18px;
+  border-radius: 9px;
+}
+
+.user-enquiry-item h3 {
+  margin: 0 0 7px;
+}
+
+.user-enquiry-item p,
+.user-enquiry-item small {
+  color: #999;
+  font-size: 13px;
+}
+
+.user-status {
+  display: inline-flex;
+  gap: 6px;
+  align-items: center;
+  background: #29231a;
+  color: #ffb52e;
+  border-radius: 20px;
+  padding: 7px 12px;
+  font-size: 12px;
+  text-transform: capitalize;
+  white-space: nowrap;
+}
+
+.user-status.contacted {
+  color: #7dbbff;
+  background: #192a3b;
+}
+
+.user-status.closed {
+  color: #a5d6a7;
+  background: #1c3020;
+}
+
+.user-empty {
+  text-align: center;
+  padding: 45px 10px;
+  color: #999;
+}
+
+.user-empty svg {
+  color: #ff9d00;
+}
+
+.user-alert {
+  padding: 13px 16px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.user-alert.error {
+  background: #3a1b1b;
+  color: #ffaaaa;
+}
+
+.user-alert.success {
+  background: #183020;
+  color: #9be0a6;
+}
+
+.user-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: #000b;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.user-modal {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  padding: 30px;
+  background: #1b1b1b;
+  border: 1px solid #444;
+  border-radius: 14px;
+}
+
+.user-modal h2 {
+  margin-top: 8px;
+}
+
+.user-modal-close {
+  position: absolute;
+  top: 12px;
+  right: 17px;
+  border: 0;
+  background: none;
+  color: white;
+  font-size: 28px;
+  cursor: pointer;
+}
+
+.user-selected-plan {
+  display: grid;
+  gap: 7px;
+  padding: 15px;
+  background: #29231a;
+  border-radius: 8px;
+  margin: 20px 0;
+}
+
+.user-selected-plan span {
+  color: #ffb52e;
+}
+
+.user-modal textarea {
+  display: block;
+  margin-top: 10px;
+  resize: vertical;
+}
+
+.user-modal form .user-primary-button {
+  width: 100%;
+}
+
+.user-modal > small {
+  display: block;
+  color: #999;
+  margin-top: 18px;
+  line-height: 1.5;
+}
+
+.user-dashboard-loading {
+  min-height: 100vh;
+  display: grid;
+  place-content: center;
+  background: #101010;
+  color: #ff9d00;
+  text-align: center;
+}
+
+@media (max-width: 800px) {
+  .user-dashboard {
+    flex-direction: column;
+  }
+
+  .user-sidebar {
+    width: auto;
+    padding: 18px;
+  }
+
+  .user-brand {
+    margin-bottom: 18px;
+  }
+
+  .user-sidebar-profile {
+    padding-bottom: 15px;
+  }
+
+  .user-navigation {
+    display: flex;
+    overflow-x: auto;
+    margin-top: 15px;
+  }
+
+  .user-navigation button {
+    flex-shrink: 0;
+    width: auto;
+    padding: 11px;
+  }
+
+  .user-logout {
+    margin-top: 15px;
+  }
+
+  .user-main {
+    padding: 20px;
+  }
+
+  .user-stats {
+    grid-template-columns: 1fr;
+  }
+
+  .user-welcome h2 {
+    font-size: 22px;
+  }
+
+  .user-welcome > svg {
+    width: 45px;
+  }
+
+  .user-enquiry-item {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

@@ -12,15 +12,7 @@ import { ArrowDown, ArrowRight, Menu, X, Images } from 'lucide-react'
 
 import './App.css'
 
-
-
 gsap.registerPlugin(ScrollTrigger)
-
-
-
-
-
-
 
 function App() {
 
@@ -30,19 +22,19 @@ function App() {
 
   const [activePhoto, setActivePhoto] = useState(null)
 
-
-
   const [trainers, setTrainers] = useState([]);
 
   const [trainersLoading, setTrainersLoading] = useState(true);
 
   const [trainersError, setTrainersError] = useState("");
 
+  const [membershipPlans, setMembershipPlans] = useState([]);
 
+const [plansLoading, setPlansLoading] = useState(true);
+
+const [plansError, setPlansError] = useState("");
 
     const apiUrl = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '')
-
-
 
   // These are illustrative gym photos. Replace with approved Sylas Gym photos when available.
 
@@ -70,126 +62,240 @@ function App() {
 
 ];
 
-
-
-
-
   useEffect(() => {
+
     const ctx = gsap.context(() => {
+
       const reduceMotion = window.matchMedia(
+
         '(prefers-reduced-motion: reduce)'
+
       ).matches;
+
       const mobile = window.matchMedia('(max-width: 640px)').matches;
 
       if (reduceMotion) return;
 
       gsap.from('.nav-item', {
+
         y: -16,
+
         opacity: 0,
+
         duration: 0.7,
+
         stagger: 0.1,
+
         ease: 'power3.out',
+
       });
 
       gsap.from(
+
         '.hero-tag, .hero-title, .hero-description, .hero-actions',
+
         {
+
           y: mobile ? 18 : 35,
+
           opacity: 0,
+
           duration: 0.8,
+
           stagger: 0.14,
+
           delay: 0.15,
+
           ease: 'power3.out',
+
         }
+
       );
 
       gsap.from('.hero-image', {
+
         scale: mobile ? 1.03 : 1.1,
+
         opacity: 0.6,
+
         duration: 1.3,
+
         ease: 'power2.out',
+
       });
 
       gsap.utils.toArray([
+
         '.intro-section',
+
         '.training-section',
+
         '.trainers-section',
+
         '.contact-section',
+
         '.gallery-section',
+
         '.owner-section',
+
         '.timetable-section',
+
       ]).forEach((section) => {
+
         const content = section.querySelectorAll(
+
           '.section-kicker, h2, p, .button-primary'
+
         );
+
         gsap.from(content, {
+
           y: mobile ? 14 : 30,
+
           opacity: 0,
+
           duration: 0.7,
+
           stagger: 0.1,
+
           ease: 'power2.out',
+
           scrollTrigger: {
+
             trigger: section,
+
             start: 'top 85%',
+
             once: true,
+
           },
+
         });
+
       });
 
       if (!mobile) {
+
         gsap.to('.hero-image', {
+
           yPercent: 8,
+
           ease: 'none',
+
           scrollTrigger: {
+
             trigger: '.hero',
+
             start: 'top top',
+
             end: 'bottom top',
+
             scrub: 0.6,
+
           },
+
         });
+
       }
+
     }, heroRef);
 
     return () => ctx.revert();
+
   }, []);
+
+  useEffect(() => {
+
+    let cancelled = false;
+
+    const loadPublicTrainers = async () => {
+
+      try {
+
+        const response = await fetch(`${apiUrl}/api/trainers`);
+
+        const data = await response.json();
+
+        if (!response.ok || !data.success) {
+
+          throw new Error('Unable to load trainers.');
+
+        }
+
+        if (!cancelled) {
+
+          setTrainers(data.trainers || []);
+
+          setTrainersError('');
+
+        }
+
+      } catch (error) {
+
+        if (!cancelled) {
+
+          setTrainersError('Trainer profiles are temporarily unavailable.');
+
+        }
+
+      } finally {
+
+        if (!cancelled) {
+
+          setTrainersLoading(false);
+
+        }
+
+      }
+
+    };
+
+    loadPublicTrainers();
+
+    return () => {
+
+      cancelled = true;
+
+    };
+
+  }, []);
+
 
   useEffect(() => {
     let cancelled = false;
 
-    const loadPublicTrainers = async () => {
+    const loadMembershipPlans = async () => {
       try {
-        const response = await fetch(`${apiUrl}/api/trainers`);
+        const response = await fetch(`${apiUrl}/api/membership-plans`);
         const data = await response.json();
 
         if (!response.ok || !data.success) {
-          throw new Error('Unable to load trainers.');
+          throw new Error(data.message || "Unable to load membership plans.");
         }
 
         if (!cancelled) {
-          setTrainers(data.trainers || []);
-          setTrainersError('');
+          setMembershipPlans(data.plans || []);
+          setPlansError("");
         }
       } catch (error) {
         if (!cancelled) {
-          setTrainersError('Trainer profiles are temporarily unavailable.');
+          setPlansError("Membership plans are temporarily unavailable. Please try again later.");
         }
       } finally {
         if (!cancelled) {
-          setTrainersLoading(false);
+          setPlansLoading(false);
         }
       }
     };
 
-    loadPublicTrainers();
+    loadMembershipPlans();
+
     return () => {
       cancelled = true;
     };
   }, []);
 
-
   const closeMenu = () => setMenuOpen(false)
-
-
 
   return (
 
@@ -219,8 +325,6 @@ function App() {
 
 </a>
 
-
-
         <div className={`nav-links ${menuOpen ? 'nav-links-open' : ''}`}>
 
           <a className="nav-item" href="#home" onClick={closeMenu}>HOME</a>
@@ -243,15 +347,11 @@ function App() {
 
         </div>
 
-
-
         <a className="nav-cta nav-item" href="#contact">
 
           JOIN NOW <ArrowRight size={16} />
 
         </a>
-
-
 
         <button
 
@@ -271,13 +371,9 @@ function App() {
 
       </nav>
 
-
-
       <section className="hero" id="home">
 
         <div className="hero-image" />
-
-
 
         <div className="hero-content">
 
@@ -286,8 +382,6 @@ function App() {
             <span /> YOUR JOURNEY. YOUR STRENGTH.
 
           </p>
-
-
 
           <h1 className="hero-title">
 
@@ -307,8 +401,6 @@ function App() {
 
           </h1>
 
-
-
           <p className="hero-description">
 
             Every rep has a purpose. Every day is an opportunity
@@ -316,8 +408,6 @@ function App() {
             to become stronger. Start your journey at Sylas Gym.
 
           </p>
-
-
 
           <div className="hero-actions">
 
@@ -337,8 +427,6 @@ function App() {
 
         </div>
 
-
-
         <div className="hero-bottom">
 
           <span>BORABANDA · HYDERABAD</span>
@@ -349,13 +437,9 @@ function App() {
 
         </div>
 
-
-
         <div className="hero-side-label">STRENGTH · FOCUS · CONSISTENCY</div>
 
       </section>
-
-
 
       <section className="intro-section" id="about">
 
@@ -380,10 +464,6 @@ function App() {
         </p>
 
       </section>
-
-
-
-
 
 <section className="training-section" id="training">
 
@@ -415,8 +495,6 @@ function App() {
 
   </div>
 
-
-
   <div className="training-grid">
 
     <article className="training-card">
@@ -443,8 +521,6 @@ function App() {
 
     </article>
 
-
-
     <article className="training-card">
 
       <img
@@ -468,8 +544,6 @@ function App() {
       </div>
 
     </article>
-
-
 
     <article className="training-card">
 
@@ -497,8 +571,6 @@ function App() {
 
   </div>
 
-
-
   <a href="#contact" className="button-primary training-cta">
 
     ENQUIRE ABOUT MEMBERSHIP <ArrowRight size={18} />
@@ -506,12 +578,6 @@ function App() {
   </a>
 
 </section>
-
-
-
-
-
-
 
 <section className="trainers-section" id="trainers">
 
@@ -524,8 +590,6 @@ function App() {
     <p>Experienced coaches to support your fitness journey.</p>
 
   </div>
-
-
 
   {trainersLoading ? (
 
@@ -565,8 +629,6 @@ function App() {
 
           </div>
 
-
-
           <div className="trainer-card-content">
 
             <h3>{trainer.name}</h3>
@@ -577,15 +639,11 @@ function App() {
 
             </p>
 
-
-
             <p className="trainer-experience">
 
               {trainer.experience_years} years of experience
 
             </p>
-
-
 
             {trainer.qualifications && (
 
@@ -596,8 +654,6 @@ function App() {
               </p>
 
             )}
-
-
 
             {trainer.bio && <p className="trainer-bio">{trainer.bio}</p>}
 
@@ -612,14 +668,6 @@ function App() {
   )}
 
 </section>
-
-
-
-
-
-
-
-
 
       <section className="gallery-section" id="gallery">
 
@@ -640,8 +688,6 @@ function App() {
           </p>
 
         </div>
-
-
 
         <div className="gallery-marquee" aria-label="Sylas Gym photo highlights">
 
@@ -680,8 +726,6 @@ function App() {
         <p className="gallery-note">Select any photo to view it larger.</p>
 
       </section>
-
-
 
       <section className="owner-section" id="owner">
 
@@ -737,12 +781,6 @@ function App() {
 
       </section>
 
-
-
-
-
-
-
       <section className="contact-section" id="contact">
 
   <div className="contact-layout">
@@ -750,8 +788,6 @@ function App() {
     <div className="contact-info">
 
       <p className="section-kicker">04 — TAKE THE FIRST STEP</p>
-
-
 
       <h2>
 
@@ -763,8 +799,6 @@ function App() {
 
       </h2>
 
-
-
       <p className="contact-description">
 
         Ready to begin your fitness journey? Contact Sylas Gym
@@ -772,8 +806,6 @@ function App() {
         to ask about membership and visit the gym.
 
       </p>
-
-
 
       <div className="contact-details">
 
@@ -785,8 +817,6 @@ function App() {
 
         </div>
 
-
-
         <div className="contact-detail">
 
           <span>PHONE</span>
@@ -796,8 +826,6 @@ function App() {
         </div>
 
       </div>
-
-
 
       <div className="contact-actions">
 
@@ -815,15 +843,13 @@ function App() {
 
         </a>
 
-
-
         <a
 
           className="button-secondary"
 
           href={GYM_CONFIG.mapsUrl}
 
-          target="_blank"
+          target="\_blank"
 
           rel="noreferrer"
 
@@ -832,8 +858,6 @@ function App() {
           GET DIRECTIONS <ArrowRight size={18} />
 
         </a>
-
-
 
         <a
 
@@ -845,7 +869,7 @@ function App() {
 
           )}`}
 
-          target="_blank"
+          target="\_blank"
 
           rel="noreferrer"
 
@@ -859,10 +883,6 @@ function App() {
 
     </div>
 
-
-
-
-
 <form
 
   className="membership-form"
@@ -871,13 +891,9 @@ function App() {
 
     event.preventDefault();
 
-
-
     const form = event.currentTarget;
 
     const formData = new FormData(form);
-
-
 
     const memberName = String(formData.get("name") || "").trim();
 
@@ -885,15 +901,13 @@ function App() {
 
     const goal = String(formData.get("goal") || "");
 
-
+    const planId = Number(formData.get("plan_id"));
 
     const submitButton = form.querySelector('button[type="submit"]');
 
     submitButton.disabled = true;
 
     submitButton.textContent = "SENDING...";
-
-
 
     try {
 
@@ -912,34 +926,23 @@ function App() {
           },
 
           body: JSON.stringify({
-
             name: memberName,
-
             phone: memberPhone,
-
-            membership: goal,
-
-            message: "",
-
+            plan_id: planId,
+            goal,
           }),
 
         }
 
       );
 
-
-
       const result = await response.json();
-
-
 
       if (!response.ok || !result.success) {
 
         throw new Error(result.message || "Could not submit enquiry.");
 
       }
-
-
 
       alert("Thank you! Your membership enquiry was received.");
 
@@ -971,8 +974,6 @@ function App() {
 
   <h3>LET'S GET STARTED.</h3>
 
-
-
   <label htmlFor="member-name">Your name</label>
 
   <input
@@ -993,8 +994,6 @@ function App() {
 
   />
 
-
-
   <label htmlFor="member-phone">Your phone number</label>
 
   <input
@@ -1009,17 +1008,42 @@ function App() {
 
     autoComplete="tel"
 
-    pattern="[0-9+\s()-]{7,20}"
+    pattern="[0-9+() -]{7,20}"
 
     required
 
   />
 
-
+  <label htmlFor="member-plan">Choose your membership plan</label>
+  <select
+    id="member-plan"
+    name="plan_id"
+    defaultValue=""
+    required
+    disabled={plansLoading || membershipPlans.length === 0}
+  >
+    <option value="">
+      {plansLoading
+        ? "Loading membership plans..."
+        : membershipPlans.length === 0
+          ? "No membership plans available"
+          : "Select your membership plan"}
+    </option>
+    {membershipPlans.map((plan) => (
+      <option key={plan.id} value={plan.id}>
+        {plan.name} — ₹{Number(plan.price).toLocaleString("en-IN")} ({plan.duration_months} months)
+      </option>
+    ))}
+  </select>
+  {plansError && (
+    <p className="form-note" role="alert">
+      {plansError}
+    </p>
+  )}
 
   <label htmlFor="member-goal">Your fitness goal</label>
 
-  <select id="member-goal" name="goal" defaultValue="">
+  <select id="member-goal" name="goal" defaultValue="" required>
 
     <option value="">Select your goal</option>
 
@@ -1033,8 +1057,6 @@ function App() {
 
   </select>
 
-
-
   <button type="submit" className="button-primary form-submit">
 
     SEND MEMBERSHIP ENQUIRY
@@ -1042,8 +1064,6 @@ function App() {
     <ArrowRight size={18} />
 
   </button>
-
-
 
   <p className="form-note">
 
@@ -1055,15 +1075,9 @@ function App() {
 
 </form>
 
-
-
   </div>
 
 </section>
-
-
-
-
 
       <section className="timetable-section" id="timetable">
 
@@ -1078,8 +1092,6 @@ function App() {
           <p className="timetable-description">A sample weekly class timetable inspired by the schedule reference you shared. Please confirm class timings with the gym before visiting.</p>
 
         </div>
-
-
 
         <div className="timetable-wrap">
 
@@ -1191,8 +1203,6 @@ function App() {
 
       </section>
 
-
-
       {activePhoto && (
 
         <div
@@ -1243,10 +1253,6 @@ function App() {
 
       )}
 
-
-
-
-
       <footer className="footer">
 
         <a href="#home" className="brand footer-brand">
@@ -1280,7 +1286,5 @@ function App() {
   )
 
 }
-
-
 
 export default App

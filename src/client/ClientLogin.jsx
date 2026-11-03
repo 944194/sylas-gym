@@ -1,45 +1,78 @@
-
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Mail, Lock, ArrowLeft, UserRound } from 'lucide-react';
+import { Phone, ArrowLeft, UserRound, ArrowRight, Dumbbell } from 'lucide-react';
 import './ClientLogin.css';
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const API_URL = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '');
 
 export default function ClientLogin() {
   const navigate = useNavigate();
-
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [phone, setPhone] = useState('');
+  const [accounts, setAccounts] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [selectingId, setSelectingId] = useState(null);
 
-  async function handleLogin(e) {
-    e.preventDefault();
+  async function handleLogin(event) {
+    event.preventDefault();
     setError('');
-    setLoading(true);
+    const normalizedPhone = phone.replace(/\D/g, '');
 
+    if (!/^\d{10}$/.test(normalizedPhone)) {
+      setError('Enter a valid 10-digit mobile number.');
+      return;
+    }
+
+    setLoading(true);
     try {
       const response = await fetch(`${API_URL}/api/client/login`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ phone: normalizedPhone }),
       });
-
       const data = await response.json();
 
-      if (!response.ok) {
-        throw new Error(data.message || 'Login failed.');
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Unable to find a membership account.');
       }
 
-      navigate('/client/dashboard');
+      const foundAccounts = data.accounts || [];
+      if (foundAccounts.length === 1) {
+        await selectAccount(foundAccounts[0].id);
+      } else if (foundAccounts.length > 1) {
+        setAccounts(foundAccounts);
+      } else {
+        throw new Error('No active membership accounts were found.');
+      }
     } catch (err) {
       setError(err.message || 'Unable to log in. Please try again.');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function selectAccount(clientId) {
+    setError('');
+    setSelectingId(clientId);
+    try {
+      const response = await fetch(`${API_URL}/api/client/select-account`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ clientId }),
+      });
+      const data = await response.json();
+
+      if (!response.ok || !data.success) {
+        throw new Error(data.message || 'Unable to open this membership account.');
+      }
+      navigate('/client/dashboard', { replace: true });
+    } catch (err) {
+      setError(err.message || 'Unable to select this account.');
+      setAccounts([]);
+    } finally {
+      setSelectingId(null);
     }
   }
 
@@ -50,50 +83,72 @@ export default function ClientLogin() {
           <ArrowLeft size={17} /> Back
         </Link>
 
-        <div className="client-login-icon">
-          <UserRound size={30} />
-        </div>
-
+        <div className="client-login-icon"><UserRound size={30} /></div>
         <p className="client-login-kicker">AURAFIT MEMBER ACCESS</p>
         <h1>CLIENT <span>LOGIN</span></h1>
         <p className="client-login-description">
-          Log in to access your membership and personal dashboard.
+          Enter your registered mobile number to access your gym membership.
         </p>
 
         <form onSubmit={handleLogin}>
-          <label>Email address</label>
+          <label htmlFor="client-phone">Mobile number</label>
           <div className="client-login-input">
-            <Mail size={18} />
+            <Phone size={18} />
             <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              id="client-phone"
+              type="tel"
+              inputMode="numeric"
+              placeholder="Enter 10-digit mobile number"
+              value={phone}
+              onChange={(event) => {
+                setPhone(event.target.value);
+                setAccounts([]);
+              }}
+              autoComplete="tel"
+              maxLength={15}
+              pattern="[0-9+()\s-]{10,15}"
               required
             />
           </div>
 
-          <label>Password</label>
-          <div className="client-login-input">
-            <Lock size={18} />
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-            />
-          </div>
+          {error && <p className="client-login-error" role="alert">{error}</p>}
 
-          {error && <p className="client-login-error">{error}</p>}
-
-          <button type="submit" disabled={loading}>
-            {loading ? 'LOGGING IN...' : 'LOGIN TO YOUR ACCOUNT'}
+          <button type="submit" disabled={loading || selectingId !== null}>
+            {loading ? 'SEARCHING...' : 'CONTINUE'}
+            {!loading && <ArrowRight size={17} />}
           </button>
         </form>
 
+        {accounts.length > 1 && (
+          <section className="client-account-picker">
+            <h2>Select your membership account</h2>
+            <p className="client-login-description">
+              Multiple gym accounts use this mobile number. Choose the member you want to open.
+            </p>
+
+            {accounts.map((account) => (
+              <button
+                type="button"
+                className="client-account-option"
+                key={account.id}
+                onClick={() => selectAccount(account.id)}
+                disabled={selectingId !== null}
+              >
+                <span className="client-account-avatar"><Dumbbell size={19} /></span>
+                <span className="client-account-details">
+                  <strong>{account.fullName}</strong>
+                  <small>Member ID: {account.memberId || 'Not assigned'}</small>
+                </span>
+                <span className="client-account-action">
+                  {selectingId === account.id ? 'OPENING...' : 'SELECT'}
+                </span>
+              </button>
+            ))}
+          </section>
+        )}
+
         <p className="client-login-register">
-          Don't have an account? <Link to="/register">Register here</Link>
+          Need a gym membership? Contact the gym owner.
         </p>
       </div>
     </main>
