@@ -331,6 +331,94 @@ app.post(
 );
 
 
+
+// Owner creates a new client account
+app.post(
+  "/api/owner/clients",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    try {
+      const { fullName, email, phone } = req.body || {};
+
+      // Validate client details
+      if (
+        typeof fullName !== "string" ||
+        typeof email !== "string" ||
+        typeof phone !== "string" ||
+        fullName.trim().length < 2 ||
+        fullName.trim().length > 100 ||
+        email.trim().length > 255 ||
+        !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()) ||
+        !/^[0-9+\s()-]{7,20}$/.test(phone.trim())
+      ) {
+        return res.status(400).json({
+          success: false,
+          message: "Please provide valid client details.",
+        });
+      }
+
+      const normalizedEmail = email.trim().toLowerCase();
+
+      // Check for an existing account
+      const existingClient = await pool.query(
+        "SELECT id FROM clients WHERE LOWER(email) = $1",
+        [normalizedEmail]
+      );
+
+      if (existingClient.rowCount > 0) {
+        return res.status(409).json({
+          success: false,
+          message: "A client with this email already exists.",
+        });
+      }
+
+      // Generate a random temporary password
+      const temporaryPassword = crypto.randomBytes(12).toString("base64url");
+
+      // Hash the password before storing it
+      const passwordHash = await bcrypt.hash(temporaryPassword, 12);
+
+      // Create the client with an active account
+      const result = await pool.query(
+        `INSERT INTO clients (
+          full_name,
+          email,
+          phone,
+          password_hash,
+          status
+        )
+        VALUES ($1, $2, $3, $4, 'active')
+        RETURNING id, full_name, email, phone, status, created_at`,
+        [
+          fullName.trim(),
+          normalizedEmail,
+          phone.trim(),
+          passwordHash,
+        ]
+      );
+
+      return res.status(201).json({
+        success: true,
+        message: "Client account created successfully.",
+        client: result.rows[0],
+        temporaryPassword,
+      });
+
+    } catch (error) {
+      if (error.code === "23505") {
+        return res.status(409).json({
+          success: false,
+          message: "A client with this email already exists.",
+        });
+      }
+
+      next(error);
+    }
+  }
+);
+
+
 // Client login
 app.post(
   "/api/client/login",
@@ -505,18 +593,86 @@ app.get(
 );
 
 
-// Owner API: assign a membership to a client
+
+// Get a client's membership details and history
+app.get(
+  "/api/owner/clients/:clientId/memberships",
+  requireOwner,
+  async (req, res, next) => {
+    try {
+      const clientId = Number(req.params.clientId);
+
+      if (!Number.isSafeInteger(clientId) || clientId < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid client ID.",
+        });
+      }
+
+      const clientResult = await pool.query(
+        `SELECT id, member_id::text AS member_id,
+                full_name, email, phone, status
+         FROM clients
+         WHERE id = $1`,
+        [clientId]
+      );
+
+      if (clientResult.rowCount === 0) {
+        return res.status(404).json({
+          success: false,
+          message: "Client not found.",
+        });
+      }
+
+      const membershipResult = await pool.query(
+        `SELECT *
+         FROM client_memberships
+         WHERE client_id = $1
+         ORDER BY start_date DESC, id DESC`,
+        [clientId]
+      );
+
+      return res.json({
+        success: true,
+        client: clientResult.rows[0],
+        memberships: membershipResult.rows,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+
 app.post(
   "/api/owner/clients/:clientId/membership",
   requireOwner,
   requireCsrf,
   async (req, res, next) => {
     const clientId = Number(req.params.clientId);
+
     const {
       membershipPlanId,
       amountPaid = 0,
       paymentMethod,
+      startDate,
+      expiryDate,
     } = req.body || {};
+
+    // Validate ISO date strings (YYYY-MM-DD).
+    function isValidDate(value) {
+      if (typeof value !== "string" ||
+          !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        return false;
+      }
+
+      const date = new Date(`${value}T00:00:00.000Z`);
+
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+      );
+    }
 
     if (
       !Number.isSafeInteger(clientId) ||
@@ -526,20 +682,25 @@ app.post(
       typeof amountPaid !== "number" ||
       !Number.isFinite(amountPaid) ||
       amountPaid < 0 ||
-      !["cash", "upi", "other"].includes(paymentMethod)
+      !["cash", "upi", "other"].includes(paymentMethod) ||
+      (startDate !== undefined && !isValidDate(startDate)) ||
+      (expiryDate !== undefined && !isValidDate(expiryDate)) ||
+      (startDate && expiryDate && expiryDate < startDate)
     ) {
       return res.status(400).json({
         success: false,
-        message: "Please provide valid membership and payment details.",
+        message: "Please provide valid membership, date and payment details.",
       });
     }
 
     const dbClient = await pool.connect();
+    let transactionStarted = false;
 
     try {
       await dbClient.query("BEGIN");
+      transactionStarted = true;
 
-      // Lock the client to prevent simultaneous membership assignments.
+      // Lock the client during membership assignment.
       const clientResult = await dbClient.query(
         `SELECT id, full_name, status, member_id
          FROM clients
@@ -550,6 +711,8 @@ app.post(
 
       if (clientResult.rowCount === 0) {
         await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
         return res.status(404).json({
           success: false,
           message: "Client not found.",
@@ -560,13 +723,15 @@ app.post(
 
       if (client.status !== "active") {
         await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
         return res.status(403).json({
           success: false,
           message: "This client account is suspended.",
         });
       }
 
-      // Verify the selected plan is active.
+      // Get the selected active plan.
       const planResult = await dbClient.query(
         `SELECT id, name, price, duration_months
          FROM membership_plans
@@ -576,6 +741,8 @@ app.post(
 
       if (planResult.rowCount === 0) {
         await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
         return res.status(404).json({
           success: false,
           message: "Membership plan not found or inactive.",
@@ -587,13 +754,87 @@ app.post(
 
       if (amountPaid > planPrice) {
         await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
         return res.status(400).json({
           success: false,
           message: "Amount paid cannot exceed the plan price.",
         });
       }
 
-      // Generate a Member ID only for the client's first membership.
+      // Mark memberships whose expiry dates have passed.
+      await dbClient.query(
+        `UPDATE client_memberships
+         SET status = 'expired',
+             updated_at = NOW()
+         WHERE client_id = $1
+           AND status = 'active'
+           AND expiry_date < CURRENT_DATE`,
+        [clientId]
+      );
+
+      // Automatically schedule after an existing membership,
+      // unless the owner supplied a custom start date.
+      const startResult = await dbClient.query(
+        `SELECT GREATEST(
+           CURRENT_DATE,
+           COALESCE(MAX(expiry_date) + 1, CURRENT_DATE)
+         )::date::text AS start_date
+         FROM client_memberships
+         WHERE client_id = $1
+           AND status = 'active'
+           AND expiry_date >= CURRENT_DATE`,
+        [clientId]
+      );
+
+      const finalStartDate = startDate || startResult.rows[0].start_date;
+
+      // Calculate expiry from plan duration if no custom expiry was supplied.
+      const expiryResult = await dbClient.query(
+        `SELECT (
+           $1::date
+           + ($2::int * INTERVAL '1 month')
+           - INTERVAL '1 day'
+         )::date::text AS expiry_date`,
+        [finalStartDate, plan.duration_months]
+      );
+
+      const finalExpiryDate = expiryDate || expiryResult.rows[0].expiry_date;
+
+      if (finalExpiryDate < finalStartDate) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(400).json({
+          success: false,
+          message: "Expiry date cannot be before the start date.",
+        });
+      }
+
+      // Prevent overlapping active memberships.
+      const overlapResult = await dbClient.query(
+        `SELECT id
+         FROM client_memberships
+         WHERE client_id = $1
+           AND status = 'active'
+           AND start_date <= $3::date
+           AND expiry_date >= $2::date
+         LIMIT 1`,
+        [clientId, finalStartDate, finalExpiryDate]
+      );
+
+      if (overlapResult.rowCount > 0) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(409).json({
+          success: false,
+          message:
+            "These dates overlap with another active membership. Choose different dates.",
+        });
+      }
+
+      // Generate a permanent Member ID only for the first membership.
       let memberId = client.member_id;
 
       if (memberId === null) {
@@ -605,39 +846,22 @@ app.post(
           [clientId]
         );
 
+        if (memberResult.rowCount === 0) {
+          throw new Error("Unable to generate the client Member ID.");
+        }
+
         memberId = memberResult.rows[0].member_id;
       } else {
         memberId = String(memberId);
       }
 
-      // Mark old memberships as expired when their expiry date has passed.
-      await dbClient.query(
-        `UPDATE client_memberships
-         SET status = 'expired',
-             updated_at = NOW()
-         WHERE client_id = $1
-           AND status = 'active'
-           AND expiry_date < CURRENT_DATE`,
-        [clientId]
-      );
-
-      // Start a new membership after any currently active membership.
-      const startResult = await dbClient.query(
-        `SELECT GREATEST(
-           CURRENT_DATE,
-           COALESCE(MAX(expiry_date) + 1, CURRENT_DATE)
-         )::date AS start_date
-         FROM client_memberships
-         WHERE client_id = $1
-           AND status = 'active'
-           AND expiry_date >= CURRENT_DATE`,
-        [clientId]
-      );
-
-      const startDate = startResult.rows[0].start_date;
-
       const paymentStatus =
         amountPaid >= planPrice ? "paid" : "pending";
+
+      const membershipStatus =
+        finalExpiryDate < new Date().toISOString().slice(0, 10)
+          ? "expired"
+          : "active";
 
       // Save the membership and payment details.
       const membershipResult = await dbClient.query(
@@ -654,18 +878,7 @@ app.post(
            amount_paid,
            payment_method
          )
-         VALUES (
-           $1, $2, $3, $4, $5, $6,
-           (
-             $6::date
-             + ($5::int * INTERVAL '1 month')
-             - INTERVAL '1 day'
-           )::date,
-           'active',
-           $7,
-           $8,
-           $9
-         )
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
          RETURNING *`,
         [
           clientId,
@@ -673,7 +886,9 @@ app.post(
           plan.name,
           plan.price,
           plan.duration_months,
-          startDate,
+          finalStartDate,
+          finalExpiryDate,
+          membershipStatus,
           paymentStatus,
           amountPaid,
           paymentMethod,
@@ -681,6 +896,7 @@ app.post(
       );
 
       await dbClient.query("COMMIT");
+      transactionStarted = false;
 
       return res.status(201).json({
         success: true,
@@ -690,13 +906,253 @@ app.post(
         membership: membershipResult.rows[0],
       });
     } catch (error) {
-      await dbClient.query("ROLLBACK");
+      if (transactionStarted) {
+        await dbClient.query("ROLLBACK");
+      }
+
       next(error);
     } finally {
       dbClient.release();
     }
   }
 );
+
+
+
+// Edit an existing client membership
+app.patch(
+  "/api/owner/clients/:clientId/membership/:membershipId",
+  requireOwner,
+  requireCsrf,
+  async (req, res, next) => {
+    const clientId = Number(req.params.clientId);
+    const membershipId = Number(req.params.membershipId);
+
+    const {
+      membershipPlanId,
+      amountPaid,
+      paymentMethod,
+      startDate,
+      expiryDate,
+    } = req.body || {};
+
+    function isValidDate(value) {
+      if (
+        typeof value !== "string" ||
+        !/^\d{4}-\d{2}-\d{2}$/.test(value)
+      ) {
+        return false;
+      }
+
+      const date = new Date(`${value}T00:00:00.000Z`);
+
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date.toISOString().slice(0, 10) === value
+      );
+    }
+
+    if (
+      !Number.isSafeInteger(clientId) ||
+      clientId < 1 ||
+      !Number.isSafeInteger(membershipId) ||
+      membershipId < 1 ||
+      !Number.isSafeInteger(Number(membershipPlanId)) ||
+      Number(membershipPlanId) < 1 ||
+      typeof amountPaid !== "number" ||
+      !Number.isFinite(amountPaid) ||
+      amountPaid < 0 ||
+      !["cash", "upi", "other"].includes(paymentMethod) ||
+      !isValidDate(startDate) ||
+      !isValidDate(expiryDate) ||
+      expiryDate < startDate
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide valid membership, date and payment details.",
+      });
+    }
+
+    const dbClient = await pool.connect();
+    let transactionStarted = false;
+
+    try {
+      await dbClient.query("BEGIN");
+      transactionStarted = true;
+
+      // Lock the client.
+      const clientResult = await dbClient.query(
+        `SELECT id, full_name, status
+         FROM clients
+         WHERE id = $1
+         FOR UPDATE`,
+        [clientId]
+      );
+
+      if (clientResult.rowCount === 0) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(404).json({
+          success: false,
+          message: "Client not found.",
+        });
+      }
+
+      if (clientResult.rows[0].status !== "active") {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(403).json({
+          success: false,
+          message: "This client account is suspended.",
+        });
+      }
+
+      // Lock the membership being edited.
+      const existingResult = await dbClient.query(
+        `SELECT *
+         FROM client_memberships
+         WHERE id = $1 AND client_id = $2
+         FOR UPDATE`,
+        [membershipId, clientId]
+      );
+
+      if (existingResult.rowCount === 0) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(404).json({
+          success: false,
+          message: "Membership record not found.",
+        });
+      }
+
+      const existingMembership = existingResult.rows[0];
+
+      // Get the selected active plan.
+      const planResult = await dbClient.query(
+        `SELECT id, name, price, duration_months
+         FROM membership_plans
+         WHERE id = $1 AND is_active = TRUE`,
+        [Number(membershipPlanId)]
+      );
+
+      if (planResult.rowCount === 0) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(404).json({
+          success: false,
+          message: "Membership plan not found or inactive.",
+        });
+      }
+
+      const plan = planResult.rows[0];
+      const planPrice = Number(plan.price);
+
+      if (amountPaid > planPrice) {
+        await dbClient.query("ROLLBACK");
+        transactionStarted = false;
+
+        return res.status(400).json({
+          success: false,
+          message: "Amount paid cannot exceed the plan price.",
+        });
+      }
+
+      // Cancelled memberships remain cancelled when edited.
+      // Other memberships are active unless their expiry date has passed.
+      const remainsCancelled =
+        existingMembership.status === "cancelled";
+
+      // Check for overlapping active memberships.
+      if (!remainsCancelled) {
+        const overlapResult = await dbClient.query(
+          `SELECT id
+           FROM client_memberships
+           WHERE client_id = $1
+             AND id <> $2
+             AND status = 'active'
+             AND start_date <= $4::date
+             AND expiry_date >= $3::date
+           LIMIT 1`,
+          [clientId, membershipId, startDate, expiryDate]
+        );
+
+        if (overlapResult.rowCount > 0) {
+          await dbClient.query("ROLLBACK");
+          transactionStarted = false;
+
+          return res.status(409).json({
+            success: false,
+            message:
+              "These dates overlap with another active membership. Choose different dates.",
+          });
+        }
+      }
+
+      const paymentStatus =
+        amountPaid >= planPrice ? "paid" : "pending";
+
+      // Update the existing record, not a new record.
+      const updateResult = await dbClient.query(
+        `UPDATE client_memberships
+         SET membership_plan_id = $1,
+             plan_name = $2,
+             price = $3,
+             duration_months = $4,
+             start_date = $5,
+             expiry_date = $6,
+             status = CASE
+               WHEN status = 'cancelled' THEN 'cancelled'
+               WHEN $6::date < CURRENT_DATE THEN 'expired'
+               ELSE 'active'
+             END,
+             payment_status = $7,
+             amount_paid = $8,
+             payment_method = $9,
+             updated_at = NOW()
+         WHERE id = $10 AND client_id = $11
+         RETURNING *`,
+        [
+          plan.id,
+          plan.name,
+          plan.price,
+          plan.duration_months,
+          startDate,
+          expiryDate,
+          paymentStatus,
+          amountPaid,
+          paymentMethod,
+          membershipId,
+          clientId,
+        ]
+      );
+
+      await dbClient.query("COMMIT");
+      transactionStarted = false;
+
+      return res.json({
+        success: true,
+        message: "Membership updated successfully.",
+        clientName: clientResult.rows[0].full_name,
+        membership: updateResult.rows[0],
+      });
+
+    } catch (error) {
+      if (transactionStarted) {
+        await dbClient.query("ROLLBACK");
+      }
+
+      next(error);
+    } finally {
+      dbClient.release();
+    }
+  }
+);
+
+
 
 // Owner login
 app.post("/api/owner/login", loginLimiter, async (req, res, next) => {

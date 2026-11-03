@@ -10,6 +10,7 @@ import LoginSelection from './pages/LoginSelection.jsx';
 
 import ClientRegister from './client/ClientRegister.jsx';
 import ClientLogin from './client/ClientLogin.jsx';
+import OwnerClients from './owner/OwnerClients.jsx';
 
 import './index.css';
 
@@ -26,6 +27,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/owner" element={<Navigate to="/owner/login" replace />} />
         <Route path="/owner/login" element={<OwnerLogin />} />
         <Route path="/owner/dashboard" element={<OwnerDashboard />} />
+        <Route path="/owner/clients" element={<OwnerClients />} />
 
         {/* Client routes */}
         <Route path="/register" element={<ClientRegister />} />

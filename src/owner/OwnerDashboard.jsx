@@ -1,7 +1,8 @@
 
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import ClientManagement from './ClientManagement'
+import { CreditCard } from 'lucide-react';
+
 import {
   Users,
   UserPlus,
@@ -447,14 +448,31 @@ async function handleTrainerSave(event) {
           )}
         </div>
 
-        <div className="owner-header-actions">
-          <button onClick={loadDashboard} disabled={loading}>
-            <RefreshCw size={17} /> REFRESH
-          </button>
-          <button onClick={handleLogout}>
-            <LogOut size={17} /> LOG OUT
-          </button>
-        </div>
+        
+<div className="owner-header-actions">
+  <button
+    type="button"
+    onClick={loadDashboard}
+    disabled={loading}
+  >
+    <RefreshCw size={17} /> REFRESH
+  </button>
+
+  <button
+    type="button"
+    onClick={() => navigate('/owner/clients')}
+  >
+    <CreditCard size={17} /> ASSIGN MEMBERSHIP
+  </button>
+
+  <button
+    type="button"
+    onClick={handleLogout}
+  >
+    <LogOut size={17} /> LOG OUT
+  </button>
+</div>
+
       </header>
 
       {error && (
@@ -530,54 +548,54 @@ async function handleTrainerSave(event) {
                     <th>FITNESS GOAL</th>
                     <th>STATUS</th>
                     <th>DATE</th>
+                    
                   </tr>
                 </thead>
 
-                <tbody>
-                  {enquiries.length === 0 ? (
-                    <tr>
-                      <td colSpan="6" className="owner-empty">
-                        {pagination.total === 0
-                          ? 'No enquiries match your search or selected filter.'
-                          : 'No enquiries on this page.'}
-                      </td>
-                    </tr>
-                  ) : (
-                    enquiries.map((enquiry) => (
-                      <tr key={enquiry.id}>
-                        <td>#{enquiry.id}</td>
-                        <td>{enquiry.name}</td>
-                        <td>
-                          <a href={`tel:${enquiry.phone}`}>
-                            {enquiry.phone}
-                          </a>
-                        </td>
-                        <td>{enquiry.membership || '—'}</td>
-                        <td>
-                          <select
-                            className={`owner-status-select owner-status-${enquiry.status}`}
-                            value={enquiry.status}
-                            onChange={(event) =>
-                              handleStatusChange(
-                                enquiry.id,
-                                event.target.value
-                              )
-                            }
-                            aria-label={`Change status for ${enquiry.name}`}
-                          >
-                            <option value="new">New</option>
-                            <option value="contacted">Contacted</option>
-                            <option value="converted">Converted</option>
-                            <option value="closed">Closed</option>
-                          </select>
-                        </td>
-                        <td>
-                          {new Date(enquiry.created_at).toLocaleString('en-IN')}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
+               
+<tbody>
+  {enquiries.length === 0 ? (
+    <tr>
+      <td colSpan="6" className="owner-empty">
+        {pagination.total === 0
+          ? 'No enquiries match your search or selected filter.'
+          : 'No enquiries on this page.'}
+      </td>
+    </tr>
+  ) : (
+    enquiries.map((enquiry) => (
+      <tr key={enquiry.id}>
+        <td>#{enquiry.id}</td>
+        <td>{enquiry.name}</td>
+        <td>
+          <a href={`tel:${enquiry.phone}`}>
+            {enquiry.phone}
+          </a>
+        </td>
+        <td>{enquiry.membership || '—'}</td>
+        <td>
+          <select
+            className={`owner-status-select owner-status-${enquiry.status}`}
+            value={enquiry.status}
+            onChange={(event) =>
+              handleStatusChange(enquiry.id, event.target.value)
+            }
+            aria-label={`Change status for ${enquiry.name}`}
+          >
+            <option value="new">New</option>
+            <option value="contacted">Contacted</option>
+            <option value="converted">Converted</option>
+            <option value="closed">Closed</option>
+          </select>
+        </td>
+        <td>
+          {new Date(enquiry.created_at).toLocaleString('en-IN')}
+        </td>
+      </tr>
+    ))
+  )}
+</tbody>
+
               </table>
             </div>
 
@@ -614,7 +632,7 @@ async function handleTrainerSave(event) {
         )}
       </section>
 
-      <ClientManagement csrfToken={csrfToken} />
+      
 
       
 <section className="owner-trainers">
