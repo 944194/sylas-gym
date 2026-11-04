@@ -1637,3 +1637,21 @@ img {
   font-size: 13px;
   resize: vertical;
 }
+
+
+/* Public membership plan details */
+.public-memberships { padding: 100px max(24px, calc((100vw - 1280px) / 2)); background: #111; color: #f7f7f7; }
+.public-memberships-heading { max-width: 680px; margin-bottom: 42px; }
+.public-memberships-heading h2 { font-size: clamp(36px, 5vw, 64px); line-height: .98; margin: 12px 0; font-weight: 900; }
+.public-memberships-heading h2 span { color: #ef4036; }
+.public-memberships-heading > p:last-child { color: #aaa; line-height: 1.7; }
+.public-membership-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 20px; }
+.public-membership-card { display: flex; flex-direction: column; padding: 28px; min-height: 390px; background: #1a1a1a; border: 1px solid #343434; border-radius: 12px; transition: transform .25s ease, border-color .25s ease; }
+.public-membership-card:hover { transform: translateY(-6px); border-color: #ef4036; }
+.public-membership-card h3 { margin: 8px 0 14px; font-size: 27px; text-transform: uppercase; }
+.public-membership-price { font-size: 38px; font-weight: 900; color: #fff; }
+.public-membership-duration { color: #ef4036; font-weight: 700; margin: 5px 0 14px; }
+.public-membership-description { color: #aaa; line-height: 1.6; }
+.public-membership-card ul { padding-left: 20px; color: #ddd; line-height: 1.8; margin-bottom: 24px; }
+.public-membership-card .button-primary { margin-top: auto; display: inline-flex; align-items: center; justify-content: center; gap: 10px; text-decoration: none; }
+@media (max-width: 640px) { .public-memberships { padding: 70px 20px; } .public-membership-card { padding: 22px; } }

@@ -699,3 +699,59 @@
   background: #ffb52e;
   transform: translateY(-1px);
 }
+
+.owner-success {
+  color: #b7e58a;
+  padding: 12px;
+  border: 1px solid #456b35;
+  border-radius: 7px;
+  background: #1b2b18;
+}
+
+.owner-section-heading > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border: 0;
+  border-radius: 7px;
+  background: #d4ff00;
+  color: #111;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.membership-admin-form .membership-admin-wide,
+.membership-admin-form .membership-admin-check,
+.membership-admin-form .membership-admin-actions {
+  grid-column: 1 / -1;
+}
+
+.membership-admin-form .membership-admin-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.membership-admin-form .membership-admin-actions button {
+  grid-column: auto;
+}
+
+.membership-admin-form .membership-cancel,
+.membership-admin-actions .membership-delete {
+  background: #3a3a3a;
+  color: #f5f5f5;
+}
+
+.membership-admin-card .membership-admin-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+}
+
+@media (max-width: 600px) {
+  .owner-section-heading {
+    align-items: flex-start;
+    gap: 14px;
+    flex-direction: column;
+  }
+}

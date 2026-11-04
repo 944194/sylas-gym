@@ -579,6 +579,29 @@ const [plansError, setPlansError] = useState("");
 
 </section>
 
+<section className="public-memberships" id="membership-plans">
+  <div className="public-memberships-heading">
+    <p className="section-kicker">CHOOSE YOUR COMMITMENT</p>
+    <h2>MEMBERSHIP <span>PLANS.</span></h2>
+    <p>Clear plans. Serious training. Choose the option that works for you.</p>
+  </div>
+  {plansLoading ? <p className="trainers-message">Loading membership plans...</p> : plansError ? <p className="trainers-message" role="status">{plansError}</p> : membershipPlans.length === 0 ? <p className="trainers-message">Membership plans will be available soon.</p> : (
+    <div className="public-membership-grid">
+      {membershipPlans.map((plan) => (
+        <article className="public-membership-card" key={plan.id}>
+          <p className="section-kicker">SYLAS GYM MEMBERSHIP</p>
+          <h3>{plan.name}</h3>
+          <div className="public-membership-price">₹{Number(plan.price).toLocaleString('en-IN')}</div>
+          <p className="public-membership-duration">{plan.duration_months} month{Number(plan.duration_months) === 1 ? '' : 's'} access</p>
+          <p className="public-membership-description">{plan.description || 'Train with purpose and make progress every day.'}</p>
+          {Array.isArray(plan.benefits) && plan.benefits.length > 0 && <ul>{plan.benefits.map((benefit, index) => <li key={`${plan.id}-${index}`}>{benefit}</li>)}</ul>}
+          <a className="button-primary" href="#contact" onClick={() => { const select = document.getElementById('member-plan'); if (select) select.value = String(plan.id) }}>ENQUIRE ABOUT THIS PLAN <ArrowRight size={17} /></a>
+        </article>
+      ))}
+    </div>
+  )}
+</section>
+
 <section className="trainers-section" id="trainers">
 
   <div className="trainers-heading">
@@ -1009,13 +1032,15 @@ const [plansError, setPlansError] = useState("");
 
     autoComplete="tel"
 
-    pattern="[0-9+() -]{7,20}"
+    pattern="[0-9]{10}"
+    minLength={10}
+    maxLength={10}
 
     required
 
   />
 
-  <label htmlFor="member-plan">Choose your membership plan</label>
+  <label htmlFor="member-plan">Choose your membership plan (optional)</label>
   <select
     id="member-plan"
     name="plan_id"

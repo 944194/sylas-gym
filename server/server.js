@@ -2628,6 +2628,12 @@ app.patch(
           message: "A membership plan with this name already exists.",
         });
       }
+      if (error.code === "23503") {
+        return res.status(409).json({
+          success: false,
+          message: "This plan is linked to existing client memberships. Deactivate it instead of deleting it.",
+        });
+      }
       next(error);
     }
   }
@@ -2677,74 +2683,49 @@ app.delete(
 
 // Public membership enquiry submission
 app.post("/api/enquiries", enquiryLimiter, async (req, res, next) => {
-  const { name, phone, plan_id, goal } = req.body || {};
+  const { name, phone, plan_id, goal = "", enquiry = "" } = req.body || {};
+  const hasPlan = plan_id !== null && plan_id !== undefined && String(plan_id).trim() !== "";
+  const parsedPlanId = hasPlan ? Number(plan_id) : null;
 
   if (
-    typeof name !== "string" ||
-    typeof phone !== "string" ||
-    name.trim().length < 2 ||
-    name.trim().length > 100 ||
-    !/^[0-9+\s()-]{7,20}$/.test(phone.trim()) ||
-    !Number.isSafeInteger(Number(plan_id)) ||
-    Number(plan_id) <= 0 ||
-    typeof goal !== "string" ||
-    goal.length > 100
+    typeof name !== "string" || name.trim().length < 2 || name.trim().length > 100 ||
+    typeof phone !== "string" || !/^[0-9+\s()\-]{7,20}$/.test(phone.trim()) ||
+    (hasPlan && (!Number.isSafeInteger(parsedPlanId) || parsedPlanId < 1)) ||
+    typeof goal !== "string" || goal.length > 100 ||
+    typeof enquiry !== "string" || enquiry.length > 1000
   ) {
-    return res.status(400).json({
-      success: false,
-      message: "Please provide valid enquiry details.",
-    });
+    return res.status(400).json({ success: false, message: "Please provide valid enquiry details." });
   }
 
   try {
-    // Verify the selected plan using the database
-    const planResult = await pool.query(
-      `SELECT id, name, price, duration_months
-       FROM membership_plans
-       WHERE id = $1 AND is_active = TRUE`,
-      [Number(plan_id)]
-    );
-
-    if (planResult.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "The selected membership plan is unavailable.",
-      });
+    let selectedPlan = null;
+    if (hasPlan) {
+      const planResult = await pool.query(
+        `SELECT id, name, price, duration_months FROM membership_plans WHERE id = $1 AND is_active = TRUE`,
+        [parsedPlanId]
+      );
+      if (planResult.rows.length === 0) {
+        return res.status(400).json({ success: false, message: "The selected membership plan is unavailable." });
+      }
+      selectedPlan = planResult.rows[0];
     }
 
-    const selectedPlan = planResult.rows[0];
-
-    const enquiryMessage =
-      `Fitness goal: ${goal.trim()}. ` +
-      `Selected plan price: ₹${Number(selectedPlan.price).toLocaleString("en-IN")}.`;
-
     const result = await pool.query(
-      `INSERT INTO enquiries (name, phone, membership, message)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, name, phone, membership, message, status, created_at`,
-      [
-        name.trim(),
-        phone.trim(),
-        selectedPlan.name,
-        enquiryMessage,
-      ]
+      `INSERT INTO enquiries (name, phone, membership, message, fitness_goal, enquiry_text)
+       VALUES ($1, $2, $3, $4, $5, $6)
+       RETURNING id, name, phone, membership, message, fitness_goal, enquiry_text, status, created_at`,
+      [name.trim(), phone.trim(), selectedPlan?.name || null,
+       selectedPlan ? `Selected plan price: ₹${Number(selectedPlan.price).toLocaleString("en-IN")}.` : "",
+       goal.trim(), enquiry.trim()]
     );
 
     const savedEnquiry = result.rows[0];
-
-    const ownerMessage =
-      `Sylas Gym: New membership enquiry from ${savedEnquiry.name}. ` +
-      `Phone: ${savedEnquiry.phone}. ` +
-      `Plan: ${selectedPlan.name}. ` +
-      `Goal: ${goal.trim()}.`;
-
+    const ownerMessage = `Sylas Gym: New enquiry from ${savedEnquiry.name}. Phone: ${savedEnquiry.phone}.` +
+      (selectedPlan ? ` Plan: ${selectedPlan.name}.` : " No membership selected.") +
+      (goal.trim() ? ` Goal: ${goal.trim()}.` : "");
     void sendOwnerSms(ownerMessage);
 
-    res.status(201).json({
-      success: true,
-      message: "Your membership enquiry was saved successfully.",
-      enquiry: savedEnquiry,
-    });
+    return res.status(201).json({ success: true, message: "Your enquiry was saved successfully.", enquiry: savedEnquiry });
   } catch (error) {
     next(error);
   }
@@ -2811,7 +2792,10 @@ app.get("/api/enquiries", requireOwner, async (req, res, next) => {
   name,
   NULL::text AS email,
   phone,
-  membership,
+  COALESCE(membership, '—') AS membership,
+  membership AS membership_enquiry,
+  fitness_goal,
+  enquiry_text,
   message,
   status,
   created_at,
@@ -2826,6 +2810,9 @@ FROM enquiries
         ru.email AS email,
         ru.phone AS phone,
         COALESCE(rue.plan_name, 'Membership Enquiry') AS membership,
+        rue.plan_name AS membership_enquiry,
+        NULL::text AS fitness_goal,
+        rue.message AS enquiry_text,
         rue.message,
         rue.status,
         rue.created_at,

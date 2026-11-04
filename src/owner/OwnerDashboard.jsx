@@ -14,6 +14,7 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import './Owner.css'
+import MembershipPlansManager from './MembershipPlansManager'
 
 
 const API_URL = (
@@ -484,6 +485,8 @@ async function handleTrainerSave(event) {
         </p>
       )}
 
+      
+
       <section className="owner-stats">
         {statCards.map((stat) => {
           const Icon = stat.icon
@@ -896,6 +899,8 @@ async function handleTrainerSave(event) {
     </button>
   )}
 </section>
+
+<MembershipPlansManager csrfToken={csrfToken} />
 
     </main>
   )
