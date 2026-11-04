@@ -230,6 +230,42 @@
 
 
 
+
+/* Row-based client register */
+.client-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+  border: 1px solid rgba(255,255,255,.12);
+  border-radius: 10px;
+}
+.client-members-table {
+  width: 100%;
+  min-width: 900px;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.client-members-table th,
+.client-members-table td {
+  padding: 14px 12px;
+  border-bottom: 1px solid rgba(255,255,255,.1);
+  text-align: left;
+  vertical-align: middle;
+}
+.client-members-table th {
+  color: #aaa;
+  font-size: 11px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.client-members-table tbody tr { cursor: pointer; transition: background .15s ease; }
+.client-members-table tbody tr:hover,
+.client-members-table tbody tr.selected { background: rgba(227,38,54,.09); }
+.client-members-table tbody tr:last-child td { border-bottom: 0; }
+.client-members-table td small { display: block; margin-top: 4px; color: #999; }
+.client-account-status.inactive { background: rgba(255,95,75,.15); color: #ff8b7b; }
+.client-account-status.no_membership { background: rgba(180,180,180,.14); color: #bbb; }
+
 /* Client management layout */
 .client-management-actions {
   display: flex;

@@ -676,3 +676,26 @@
     grid-template-columns: 1fr;
   }
 }
+
+
+.trainer-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: 18px 0;
+}
+
+.trainer-form-actions button {
+  padding: 12px 22px;
+  border: none;
+  border-radius: 7px;
+  background: #f5a000;
+  color: #111;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.trainer-form-actions button:hover {
+  background: #ffb52e;
+  transform: translateY(-1px);
+}

@@ -1,0 +1,42 @@
+
+/* Full-width client register and separate client detail route */
+.client-management-layout {
+  display: block !important;
+  width: 100%;
+}
+.client-management-list {
+  width: 100%;
+  min-width: 0;
+}
+.client-table-wrap {
+  width: 100%;
+  overflow-x: auto;
+}
+.client-members-table {
+  width: 100%;
+  min-width: 1050px;
+  table-layout: auto;
+}
+.client-members-table th,
+.client-members-table td {
+  padding: 16px 18px;
+}
+.client-management-workspace {
+  width: 100%;
+  max-width: none;
+  margin-top: 4px;
+}
+.client-back-button {
+  align-self: flex-start;
+  width: fit-content;
+  padding: 11px 16px;
+  border: 1px solid rgba(255,255,255,.18);
+  border-radius: 7px;
+  background: #222;
+  color: #fff;
+  font-weight: 700;
+  cursor: pointer;
+}
+.client-back-button:hover {
+  background: #333;
+}

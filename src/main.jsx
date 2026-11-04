@@ -25,12 +25,12 @@ ReactDOM.createRoot(document.getElementById('root')).render(
         <Route path="/owner/login" element={<OwnerLogin />} />
         <Route path="/owner/dashboard" element={<OwnerDashboard />} />
         <Route path="/owner/clients" element={<OwnerClients />} />
+        <Route path="/owner/clients/:clientId" element={<OwnerClients />} />
 
         <Route path="/register" element={<UserRegister />} />
         <Route path="/user/dashboard" element={<UserDashboard />} />
         <Route path="/client/dashboard" element={<ClientDashboard />} />
 
-        {/* Old login URLs now lead to the one common login page. */}
         <Route path="/user/login" element={<Navigate to="/login" replace />} />
         <Route path="/client/login" element={<Navigate to="/login" replace />} />
 

@@ -55,6 +55,7 @@ const [trainerError, setTrainerError] = useState("");
 const [trainerMessage, setTrainerMessage] = useState("");
 const [trainerSaving, setTrainerSaving] = useState(false);
 const [editingTrainerId, setEditingTrainerId] = useState(null);
+const [showTrainerForm, setShowTrainerForm] = useState(false);
 
 const [trainerForm, setTrainerForm] = useState({
   name: "",
@@ -306,6 +307,8 @@ async function handleTrainerSave(event) {
     setTrainerMessage(
       isEditing ? "Trainer updated successfully." : "Trainer added successfully."
     );
+
+    setShowTrainerForm(false);
 
     setTrainerForm({
       name: "",
@@ -645,6 +648,20 @@ async function handleTrainerSave(event) {
     <span>{trainers.length} trainers</span>
   </div>
 
+  <div className="trainer-form-actions">
+  <button
+    type="button"
+    onClick={() => {
+      setShowTrainerForm((current) => !current);
+      setTrainerError("");
+      setTrainerMessage("");
+    }}
+  >
+    {showTrainerForm ? "CLOSE FORM" : "+ ADD NEW TRAINER"}
+  </button>
+</div>
+
+  {showTrainerForm && (
   <form className="trainer-form" onSubmit={handleTrainerSave}>
     <h3>{editingTrainerId ? "EDIT TRAINER" : "ADD NEW TRAINER"}</h3>
 
@@ -762,7 +779,8 @@ async function handleTrainerSave(event) {
           ? "SAVE CHANGES"
           : "ADD TRAINER"}
     </button>
-  </form>
+    </form>
+)}
 
   {trainerLoading ? (
     <p className="owner-loading">Loading trainers...</p>
@@ -787,6 +805,8 @@ async function handleTrainerSave(event) {
                 type="button"
                 onClick={() => {
                   setEditingTrainerId(trainer.id);
+                  setShowTrainerForm(true);
+
                   setTrainerForm({
                     name: trainer.name,
                     specialization: trainer.specialization,
