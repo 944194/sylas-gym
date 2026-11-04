@@ -928,8 +928,9 @@ const [plansError, setPlansError] = useState("");
           body: JSON.stringify({
             name: memberName,
             phone: memberPhone,
-            plan_id: planId,
+            plan_id: planId || null,
             goal,
+            enquiry: String(formData.get("enquiry") || "").trim(),
           }),
 
         }
@@ -962,7 +963,7 @@ const [plansError, setPlansError] = useState("");
 
       submitButton.disabled = false;
 
-      submitButton.textContent = "SEND MEMBERSHIP ENQUIRY";
+      submitButton.textContent = "SEND ENQUIRY";
 
     }
 
@@ -970,7 +971,7 @@ const [plansError, setPlansError] = useState("");
 
 >
 
-  <p className="section-kicker">MEMBERSHIP ENQUIRY</p>
+  <p className="section-kicker">GYM ENQUIRY</p>
 
   <h3>LET'S GET STARTED.</h3>
 
@@ -1019,7 +1020,6 @@ const [plansError, setPlansError] = useState("");
     id="member-plan"
     name="plan_id"
     defaultValue=""
-    required
     disabled={plansLoading || membershipPlans.length === 0}
   >
     <option value="">
@@ -1043,7 +1043,7 @@ const [plansError, setPlansError] = useState("");
 
   <label htmlFor="member-goal">Your fitness goal</label>
 
-  <select id="member-goal" name="goal" defaultValue="" required>
+  <select id="member-goal" name="goal" defaultValue="">
 
     <option value="">Select your goal</option>
 
@@ -1057,9 +1057,19 @@ const [plansError, setPlansError] = useState("");
 
   </select>
 
+  <label htmlFor="member-enquiry">Other queries (optional)</label>
+
+  <textarea
+    id="member-enquiry"
+    name="enquiry"
+    placeholder="Type any questions or requirements..."
+    rows={4}
+    maxLength={1000}
+  />
+
   <button type="submit" className="button-primary form-submit">
 
-    SEND MEMBERSHIP ENQUIRY
+    SEND ENQUIRY
 
     <ArrowRight size={18} />
 
@@ -1067,7 +1077,7 @@ const [plansError, setPlansError] = useState("");
 
   <p className="form-note">
 
-    Your enquiry will be submitted securely to our server.
+    Membership selection, fitness goal and other queries are optional.
 
     Our team can follow up with you.
 

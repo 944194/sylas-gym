@@ -2647,18 +2647,23 @@ app.delete(
 
 // Public membership enquiry submission
 app.post("/api/enquiries", enquiryLimiter, async (req, res, next) => {
-  const { name, phone, plan_id, goal } = req.body || {};
+  const { name, phone, plan_id, goal = "", enquiry = "" } = req.body || {};
+
+  const planId = plan_id === null || plan_id === undefined || plan_id === ""
+    ? null
+    : Number(plan_id);
 
   if (
     typeof name !== "string" ||
     typeof phone !== "string" ||
     name.trim().length < 2 ||
     name.trim().length > 100 ||
-    !/^[0-9+\s()-]{7,20}$/.test(phone.trim()) ||
-    !Number.isSafeInteger(Number(plan_id)) ||
-    Number(plan_id) <= 0 ||
+    !/^[0-9+\\s()-]{7,20}$/.test(phone.trim()) ||
+    (planId !== null && (!Number.isSafeInteger(planId) || planId <= 0)) ||
     typeof goal !== "string" ||
-    goal.length > 100
+    goal.length > 100 ||
+    typeof enquiry !== "string" ||
+    enquiry.length > 1000
   ) {
     return res.status(400).json({
       success: false,
@@ -2667,52 +2672,50 @@ app.post("/api/enquiries", enquiryLimiter, async (req, res, next) => {
   }
 
   try {
-    // Verify the selected plan using the database
-    const planResult = await pool.query(
-      `SELECT id, name, price, duration_months
-       FROM membership_plans
-       WHERE id = $1 AND is_active = TRUE`,
-      [Number(plan_id)]
-    );
+    let selectedPlan = null;
+    if (planId !== null) {
+      const planResult = await pool.query(
+        `SELECT id, name
+         FROM membership_plans
+         WHERE id = $1 AND is_active = TRUE`,
+        [planId]
+      );
 
-    if (planResult.rows.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "The selected membership plan is unavailable.",
-      });
+      if (planResult.rows.length === 0) {
+        return res.status(400).json({
+          success: false,
+          message: "The selected membership plan is unavailable.",
+        });
+      }
+      selectedPlan = planResult.rows[0];
     }
 
-    const selectedPlan = planResult.rows[0];
-
-    const enquiryMessage =
-      `Fitness goal: ${goal.trim()}. ` +
-      `Selected plan price: ₹${Number(selectedPlan.price).toLocaleString("en-IN")}.`;
-
     const result = await pool.query(
-      `INSERT INTO enquiries (name, phone, membership, message)
-       VALUES ($1, $2, $3, $4)
-       RETURNING id, name, phone, membership, message, status, created_at`,
+      `INSERT INTO enquiries
+         (name, phone, membership, fitness_goal, enquiry_text, message)
+       VALUES ($1, $2, $3, $4, $5, $5)
+       RETURNING id, name, phone, membership, fitness_goal,
+                 enquiry_text, message, status, created_at`,
       [
         name.trim(),
         phone.trim(),
-        selectedPlan.name,
-        enquiryMessage,
+        selectedPlan ? selectedPlan.name : null,
+        goal.trim() || null,
+        enquiry.trim(),
       ]
     );
 
     const savedEnquiry = result.rows[0];
-
     const ownerMessage =
-      `Sylas Gym: New membership enquiry from ${savedEnquiry.name}. ` +
+      `Sylas Gym: New enquiry from ${savedEnquiry.name}. ` +
       `Phone: ${savedEnquiry.phone}. ` +
-      `Plan: ${selectedPlan.name}. ` +
-      `Goal: ${goal.trim()}.`;
-
+      `Membership: ${selectedPlan ? selectedPlan.name : "Not selected"}. ` +
+      `Fitness goal: ${goal.trim() || "Not specified"}.`;
     void sendOwnerSms(ownerMessage);
 
-    res.status(201).json({
+    return res.status(201).json({
       success: true,
-      message: "Your membership enquiry was saved successfully.",
+      message: "Your enquiry was saved successfully.",
       enquiry: savedEnquiry,
     });
   } catch (error) {
@@ -2762,7 +2765,10 @@ app.get("/api/enquiries", requireOwner, async (req, res, next) => {
       conditions.push(
         `(name ILIKE $${params.length}
           OR phone ILIKE $${params.length}
-          OR email ILIKE $${params.length})`
+          OR email ILIKE $${params.length}
+          OR membership_enquiry ILIKE $${params.length}
+          OR fitness_goal ILIKE $${params.length}
+          OR enquiry_text ILIKE $${params.length})`
       );
     }
 
@@ -2781,8 +2787,9 @@ app.get("/api/enquiries", requireOwner, async (req, res, next) => {
   name,
   NULL::text AS email,
   phone,
-  membership,
-  message,
+  membership AS membership_enquiry,
+  fitness_goal,
+  COALESCE(enquiry_text, message, '') AS enquiry_text,
   status,
   created_at,
   'website'::text AS source
@@ -2795,8 +2802,9 @@ FROM enquiries
         ru.full_name AS name,
         ru.email AS email,
         ru.phone AS phone,
-        COALESCE(rue.plan_name, 'Membership Enquiry') AS membership,
-        rue.message,
+        rue.plan_name AS membership_enquiry,
+        NULL::text AS fitness_goal,
+        COALESCE(rue.message, '') AS enquiry_text,
         rue.status,
         rue.created_at,
         'registered_user'::text AS source

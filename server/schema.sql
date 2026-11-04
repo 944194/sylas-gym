@@ -174,3 +174,8 @@ WHERE member_id IS NOT NULL;
 ALTER TABLE clients
 ADD CONSTRAINT clients_member_id_positive_check
 CHECK (member_id IS NULL OR member_id >= 100001);
+
+-- Separate enquiry fields: membership selection, fitness goal and free-text query.
+ALTER TABLE enquiries
+    ADD COLUMN IF NOT EXISTS fitness_goal VARCHAR(100),
+    ADD COLUMN IF NOT EXISTS enquiry_text TEXT NOT NULL DEFAULT '';

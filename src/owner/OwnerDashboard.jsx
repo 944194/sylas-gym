@@ -545,7 +545,9 @@ async function handleTrainerSave(event) {
                     <th>ID</th>
                     <th>NAME</th>
                     <th>PHONE</th>
+                    <th>MEMBERSHIP ENQUIRY</th>
                     <th>FITNESS GOAL</th>
+                    <th>OTHER QUERIES</th>
                     <th>STATUS</th>
                     <th>DATE</th>
                     
@@ -556,7 +558,7 @@ async function handleTrainerSave(event) {
 <tbody>
   {enquiries.length === 0 ? (
     <tr>
-      <td colSpan="6" className="owner-empty">
+      <td colSpan="8" className="owner-empty">
         {pagination.total === 0
           ? 'No enquiries match your search or selected filter.'
           : 'No enquiries on this page.'}
@@ -572,7 +574,9 @@ async function handleTrainerSave(event) {
             {enquiry.phone}
           </a>
         </td>
-        <td>{enquiry.membership || '—'}</td>
+        <td>{enquiry.membership_enquiry || '—'}</td>
+        <td>{enquiry.fitness_goal || '—'}</td>
+        <td>{enquiry.enquiry_text || '—'}</td>
         <td>
           <select
             className={`owner-status-select owner-status-${enquiry.status}`}
