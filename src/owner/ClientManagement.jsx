@@ -1120,7 +1120,7 @@ useEffect(() => {
 
           <p className="client-management-kicker">
 
-            AURAFIT MEMBER ADMINISTRATION
+            SYLAS Gym MEMBER ADMINISTRATION
 
           </p>
 

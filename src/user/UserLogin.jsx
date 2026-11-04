@@ -45,7 +45,7 @@ export default function UserLogin() {
     <main className="owner-page">
       <div className="owner-login-card">
         <div className="owner-login-icon"><UserRound size={30} /></div>
-        <p className="owner-kicker">AURAFIT GYM / MEMBER ACCESS</p>
+        <p className="owner-kicker">SYLAS GYM / MEMBER ACCESS</p>
         <h1>MOBILE LOGIN</h1>
         <p className="owner-subtitle">
           Enter your registered mobile number to access your website account.
@@ -72,7 +72,7 @@ export default function UserLogin() {
         <p className="owner-subtitle">
           Don't have an account? <Link to="/register">Create account</Link>
         </p>
-        <Link to="/" className="owner-back-link">← Back to AURAFIT Gym</Link>
+        <Link to="/" className="owner-back-link">← Back to SYLAS Gym</Link>
       </div>
     </main>
   );

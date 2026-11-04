@@ -65,7 +65,7 @@ export default function ClientRegister() {
 
       setSuccess(
         data.message ||
-        'Registration successful! You can now log in to your AURAFIT account.'
+        'Registration successful! You can now log in to your SYLAS Gym account.'
 
       );
 
@@ -94,17 +94,17 @@ export default function ClientRegister() {
           ← Back to login
         </Link>
 
-        <p className="register-kicker">AURAFIT MEMBER ACCESS</p>
+        <p className="register-kicker">SYLAS Gym MEMBER ACCESS</p>
 
         <h1>CREATE YOUR <span>ACCOUNT.</span></h1>
 
         <p className="register-description">
-          Join AURAFIT and start your fitness journey.
+          Join Sylas Gym and start your fitness journey.
         </p>
 
         {success ? (
   <div className="register-success">
-    <h2>WELCOME TO AURAFIT!</h2>
+    <h2>WELCOME TO SYLAS Gym!</h2>
 
     <p>{success}</p>
 

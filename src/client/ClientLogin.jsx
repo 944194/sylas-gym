@@ -84,7 +84,7 @@ export default function ClientLogin() {
         </Link>
 
         <div className="client-login-icon"><UserRound size={30} /></div>
-        <p className="client-login-kicker">AURAFIT MEMBER ACCESS</p>
+        <p className="client-login-kicker">SYLAS MEMBER ACCESS</p>
         <h1>CLIENT <span>LOGIN</span></h1>
         <p className="client-login-description">
           Enter your registered mobile number to access your gym membership.

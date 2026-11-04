@@ -202,7 +202,7 @@ export default function UserDashboard() {
       <aside className="user-sidebar">
         <div className="user-brand">
           <Dumbbell size={27} />
-          <span>AURAFIT</span>
+          <span>SYLAS Gym</span>
         </div>
 
         <div className="user-sidebar-profile">
@@ -258,7 +258,7 @@ export default function UserDashboard() {
       <main className="user-main">
         <header className="user-topbar">
           <div>
-            <p>AURAFIT GYM / PERSONAL SPACE</p>
+            <p>SYLAS GYM / PERSONAL SPACE</p>
             <h1>
               {activeTab === 'overview' && 'Dashboard'}
               {activeTab === 'profile' && 'My Profile'}
@@ -313,7 +313,7 @@ export default function UserDashboard() {
             </div>
 
             <div className="user-content-card">
-              <h2>Explore AURAFIT Memberships</h2>
+              <h2>Explore SYLAS Gym Memberships</h2>
               <p>
                 Compare available plans and submit an enquiry to our gym team.
               </p>
@@ -441,7 +441,7 @@ export default function UserDashboard() {
         {activeTab === 'enquiries' && (
           <section className="user-content-card">
             <h2>My Membership Enquiries</h2>
-            <p>Track the enquiries you have submitted to AURAFIT.</p>
+            <p>Track the enquiries you have submitted to SYLAS Gym.</p>
 
             {enquiries.length === 0 ? (
               <div className="user-empty">
@@ -495,7 +495,7 @@ export default function UserDashboard() {
               ×
             </button>
 
-            <p className="user-kicker">AURAFIT GYM</p>
+            <p className="user-kicker">SYLAS GYM</p>
             <h2>Membership Enquiry</h2>
 
             <div className="user-selected-plan">

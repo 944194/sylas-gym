@@ -58,7 +58,7 @@ export default function UserRegister() {
     <main className="owner-page">
       <div className="owner-login-card">
         <div className="owner-login-icon"><UserRound size={30} /></div>
-        <p className="owner-kicker">AURAFIT GYM / JOIN US</p>
+        <p className="owner-kicker">SYLAS GYM / JOIN US</p>
         <h1>CREATE ACCOUNT</h1>
         <p className="owner-subtitle">
           Register to explore membership plans and connect with our gym.
@@ -101,7 +101,7 @@ export default function UserRegister() {
         <p className="owner-subtitle">
           Already have an account? <Link to="/user/login">Sign in</Link>
         </p>
-        <Link to="/" className="owner-back-link">← Back to AURAFIT Gym</Link>
+        <Link to="/" className="owner-back-link">← Back to SYLAS Gym</Link>
       </div>
     </main>
   );

@@ -110,7 +110,7 @@ export default function ClientDashboard() {
       <main className="client-dashboard-state">
         <div className="client-dashboard-state-card">
           <span className="client-dashboard-spinner" />
-          <p>Loading your AURAFIT dashboard...</p>
+          <p>Loading your Sylas Gym dashboard...</p>
         </div>
       </main>
     );
@@ -135,7 +135,7 @@ export default function ClientDashboard() {
       <header className="client-dashboard-header">
         <Link to="/" className="client-dashboard-brand">
           <span className="client-dashboard-brand-icon"><Dumbbell size={20} /></span>
-          <span>AURAFIT <small>MEMBER AREA</small></span>
+          <span>Sylas Gym <small>MEMBER AREA</small></span>
         </Link>
         <div className="client-dashboard-header-actions">
           <button className="client-dashboard-refresh" onClick={loadDashboard} title="Refresh dashboard">

@@ -79,13 +79,13 @@ export default function MobileLogin() {
   return (
     <main className="mobile-login-page">
       <div className="mobile-login-card">
-        <Link to="/" className="mobile-login-back">← Back to AURAFIT</Link>
+        <Link to="/" className="mobile-login-back">← Back to SYLAS Gym</Link>
 
         <div className="mobile-login-icon"><UserRound size={30} /></div>
-        <p className="mobile-login-kicker">AURAFIT GYM / MEMBER ACCESS</p>
+        <p className="mobile-login-kicker">SYLAS GYM / MEMBER ACCESS</p>
         <h1>MOBILE LOGIN</h1>
         <p className="mobile-login-description">
-          Enter your registered mobile number to find your AURAFIT account.
+          Enter your registered mobile number to find your SYLAS Gym account.
         </p>
 
         <form onSubmit={handleLogin}>
@@ -155,7 +155,7 @@ export default function MobileLogin() {
         )}
 
         <p className="mobile-login-register">
-          New to AURAFIT? <Link to="/register">Create an account</Link>
+          New to SYLAS Gym? <Link to="/register">Create an account</Link>
         </p>
       </div>
     </main>

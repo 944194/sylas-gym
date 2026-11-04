@@ -11,9 +11,9 @@ export default function LoginSelection() {
           ← Back to website
         </Link>
 
-        <p className="login-kicker">AURAFIT MEMBER ACCESS</p>
+        <p className="login-kicker">SYLAS Gym MEMBER ACCESS</p>
 
-        <h1>WELCOME TO <span>AURAFIT.</span></h1>
+        <h1>WELCOME TO <span>SYLAS Gym.</span></h1>
 
         <p className="login-description">
           Choose your account type to continue.
@@ -36,7 +36,7 @@ export default function LoginSelection() {
         </div>
 
         <p className="login-register">
-          New to AURAFIT? <Link to="/register">Create an account</Link>
+          New to SYLAS Gym? <Link to="/register">Create an account</Link>
         </p>
       </div>
     </main>
