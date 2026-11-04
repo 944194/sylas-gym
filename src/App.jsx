@@ -311,13 +311,13 @@ const [plansError, setPlansError] = useState("");
 
     src="/images/sylas-gym-logo.png"
 
-    alt="AURAFIT Gym logo"
+    alt="SYLAS Gym logo"
 
   />
 
   <span className="brand-name">
 
-    AURAFIT <span className="brand-accent">GYM</span>
+    SYLAS <span className="brand-accent">GYM</span>
 
     <small>TRAIN WITH PURPOSE</small>
 
@@ -675,7 +675,7 @@ const [plansError, setPlansError] = useState("");
 
           <div>
 
-            <p className="section-kicker">03 — INSIDE AURAFIT</p>
+            <p className="section-kicker">03 — INSIDE SYLAS</p>
 
             <h2>THE SPACE.<br /><span>THE WORK.</span></h2>
 
@@ -1279,7 +1279,7 @@ const [plansError, setPlansError] = useState("");
 
   <span className="brand-name">
 
-    AURAFIT <span className="brand-accent">GYM</span>
+    SYLAS <span className="brand-accent">GYM</span>
 
   </span>
 
